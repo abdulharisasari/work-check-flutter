@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:workcheckapp/commons/widgets/custom_button.dart';
 import 'package:workcheckapp/commons/widgets/custom_list_data.dart';
 import 'package:workcheckapp/commons/widgets/custom_textfield.dart';
 import 'package:workcheckapp/commons/widgets/custom_banner.dart';
 import 'package:workcheckapp/models/outlet_model.dart';
+import 'package:workcheckapp/providers/outlet_provider.dart';
 import 'package:workcheckapp/routers/constant_routers.dart';
 import 'package:workcheckapp/services/themes.dart';
 
@@ -15,63 +17,47 @@ class OutletPage extends StatefulWidget {
 }
 
 class _OutletPageState extends State<OutletPage> {
-  List<OutletModel> listOutletModel = [
-    OutletModel(
-      id: 1,
-      name: "Outlet A",
-      codeOutlet: "OUT001",
-      address: "Jl. Merdeka No. 10, Jakarta",
-      imgUrl: "https://picsum.photos/200/300?random=1",
-    ),
-    OutletModel(
-      id: 2,
-      name: "Outlet B",
-      codeOutlet: "OUT002",
-      address: "Jl. Sudirman No. 25, Bandung",
-      imgUrl: "https://picsum.photos/200/300?random=2",
-    ),
-    OutletModel(
-      id: 3,
-      name: "Outlet C",
-      codeOutlet: "OUT003",
-      address: "Jl. Malioboro No. 15, Yogyakarta",
-      imgUrl: "https://picsum.photos/200/300?random=3",
-    ),
-    OutletModel(
-      id: 3,
-      name: "Outlet C",
-      codeOutlet: "OUT003",
-      address: "Jl. Malioboro No. 15, Yogyakarta",
-      imgUrl: "https://picsum.photos/200/300?random=3",
-    ),
-    OutletModel(
-      id: 3,
-      name: "Outlet C",
-      codeOutlet: "OUT003",
-      address: "Jl. Malioboro No. 15, Yogyakarta",
-      imgUrl: "https://picsum.photos/200/300?random=3",
-    ),
-    OutletModel(
-      id: 3,
-      name: "Outlet C",
-      codeOutlet: "OUT003",
-      address: "Jl. Malioboro No. 15, Yogyakarta",
-      imgUrl: "https://picsum.photos/200/300?random=3",
-    ),
-    OutletModel(
-      id: 3,
-      name: "Outlet C",
-      codeOutlet: "OUT003",
-      address: "Jl. Malioboro No. 15, Yogyakarta",
-      imgUrl: "https://picsum.photos/200/300?random=3",
-    ),
-  ];
+  final TextEditingController _searchTC = TextEditingController();
+  List<OutletModel> listOutletModel = [];
+  bool _isLoading = false;
 
-  
+  @override
+  void initState() {
+    _init();
+    super.initState();
+  }
+
+  void _init() async {
+    await _getHeaderAttandance();
+  }
+
+  Future<void> _getHeaderAttandance() async {
+    setState(() {
+      _isLoading = true;
+    });
+    listOutletModel.clear();
+    final outletProv = await Provider.of<OutletProvider>(context, listen: false);
+    try {
+      final _outletState = await outletProv.getOutlet(context, search: _searchTC.text);
+      if (_outletState != null) {
+        setState(() {
+          listOutletModel = _outletState;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error in getHeaderAttandance: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
+      body:_isLoading?Center(child: CircularProgressIndicator(),): Column(
         children: [
           BannerWidget(
             title: "Daftar Toko",
@@ -120,7 +106,7 @@ class _OutletPageState extends State<OutletPage> {
             padding: EdgeInsets.symmetric(horizontal: 20),
             child: CustomButton(
               text: "SELENGKAPNYA",
-              onPressed: () {},
+              onPressed: () async{ _getHeaderAttandance(); },
             ),
           ),
           const SizedBox(height: 20),
@@ -132,6 +118,8 @@ class _OutletPageState extends State<OutletPage> {
 
   Widget _buildSearch(){
     return CustomTextField(
+      controller: _searchTC,
+      onChanged: (p0) => _getHeaderAttandance(),
       hintext: 'Search',
       label: "",
       hintextColor: softGreyColor,

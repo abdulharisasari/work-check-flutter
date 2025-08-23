@@ -11,6 +11,7 @@ class CustomTextField extends StatelessWidget {
   final bool isTextarea; 
   final String? hintext;
   final int? hintextColor;
+  final Function(String)? onChanged;
 
   const CustomTextField({
     Key? key,
@@ -22,7 +23,8 @@ class CustomTextField extends StatelessWidget {
     this.maxLines = 1,
     this.isTextarea = false,
     this.hintext,
-    this.hintextColor
+    this.hintextColor,
+    this.onChanged,
   }) : super(key: key);
 
   @override
@@ -57,6 +59,7 @@ class CustomTextField extends StatelessWidget {
             maxLines: isTextarea ? maxLines : 1,
             minLines: isTextarea ? 3 : 1,
             onTapOutside: (event) => focusNode?.unfocus(),
+            onChanged: onChanged,
             style: TextStyle(color: Colors.black),
             decoration: InputDecoration(
               filled: true,

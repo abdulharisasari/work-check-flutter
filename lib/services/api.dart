@@ -174,14 +174,13 @@ Future<ResponseApi> _getResponseApi(
 
 class Api {
 
-    static Future<Map<String, dynamic>?> login(String body) async {
+  static Future<Map<String, dynamic>?> login(String body) async {
     try {
       final response = await _getResponseApi(
         HttpMethod.post,
         '/auth/login',
         body: body,
       );
-
       final Map<String, dynamic>? jsonDecoded = jsonDecode(response.jsonString);
       debugPrint("loginstatus ${response.statusCode}");
       if (response.statusCode == 200) return jsonDecoded;
@@ -195,26 +194,6 @@ class Api {
     }
   }
 
-
-
-  // static Future<Map<String, dynamic>?> login(String body) async {
-  //   try {
-  //     final response = await _getResponseApi(
-  //       HttpMethod.post,
-  //       'v1/auth/login',
-  //       body: body,
-  //       useEndpoint: false,
-  //       baseUrl: BaseURL.CUSTOM,
-  //     );
-  //     final Map<String, dynamic>? jsonDecoded = jsonDecode(response.jsonString);
-  //     if (response.statusCode == 200) return jsonDecoded;
-  //     throw jsonDecoded!['message'] ?? 'Login gagal';
-  //   } catch (e) {
-  //     throw e;
-  //   }
-  // }
-
-  
   static Future<Map<String, dynamic>?> getMe() async {
     try {
       final token = await Utils.getToken();
@@ -222,6 +201,7 @@ class Api {
         HttpMethod.get,
         '/auth/profile',
         authorization: token?.accessToken,
+        
       );
       debugPrint("resProfile ${response.jsonString}");
       final Map<String, dynamic>? jsonDecoded = jsonDecode(response.jsonString);
@@ -231,4 +211,181 @@ class Api {
       throw e;
     }
   }
+
+  static Future<Map<String, dynamic>?> getAttandance({String? sort}) async{
+    try {
+      final token = await Utils.getToken();
+      final response = await _getResponseApi(
+        HttpMethod.get,
+        '/report/attendance${sort != null ? '?sort=$sort' : ''}',
+        authorization: token?.accessToken,
+      );
+      debugPrint("resAttendance ${response.jsonString}");
+      final Map<String, dynamic>? jsonDecoded = jsonDecode(response.jsonString);
+      if (response.statusCode == 200) {
+        return jsonDecoded;
+      } else if (response.statusCode == 400 || response.statusCode == 401 || response.statusCode == 403 || response.statusCode == 426) {
+        debugPrint('jsonDecoded 401-403-426 on Throw $jsonDecoded');
+        return jsonDecoded;
+      } else
+        debugPrint('jsonDecoded on Throw $jsonDecoded');
+      throw jsonDecoded?['message'] ?? 'Unknown error';
+    } catch (e) {
+      if (e is FormatException) {
+        debugPrint('Format Exception: $e');
+      } else {
+        debugPrint('API call getAttandance  error: $e');
+      }
+    }
+    return null;
+  }
+
+  
+  static Future<Map<String, dynamic>?> postCreateAttendance(String body) async {
+    try {
+      final token = await Utils.getToken();
+      final response = await _getResponseApi(
+        HttpMethod.post,
+        '/report/attendance',
+        body: body,
+        authorization: token?.accessToken,
+      );
+      final Map<String, dynamic>? jsonDecoded = jsonDecode(response.jsonString);
+      debugPrint("postAttendance status ${response.statusCode}");
+      if (response.statusCode == 200)
+        return jsonDecoded;
+      else if (response.statusCode == 400 || response.statusCode == 401 || response.statusCode == 403 || response.statusCode == 426) {
+        debugPrint('jsonDecoded 401-403-426 on Throw $jsonDecoded');
+        return jsonDecoded;
+      } else
+        debugPrint('jsonDecoded on Throw $jsonDecoded');
+      throw jsonDecoded?['message'] ?? 'Unknown error';
+    } catch (e) {
+      if (e is FormatException) {
+        debugPrint('Format Exception: $e');
+      } else {
+        debugPrint('API call postCreateAttendance error: $e');
+      }
+    }
+    return null;
+  }
+
+
+
+  static Future<Map<String, dynamic>?> getAllOutlet({String? search}) async {
+    try {
+      final token = await Utils.getToken();
+      final response = await _getResponseApi(
+        HttpMethod.get,
+        '/stores${search != null ? '?search=$search' : ''}',
+        authorization: token?.accessToken,
+      );
+      debugPrint("resAttendance ${response.jsonString}");
+      final Map<String, dynamic>? jsonDecoded = jsonDecode(response.jsonString);
+      if (response.statusCode == 200) {
+        return jsonDecoded;
+      } else if (response.statusCode == 400 || response.statusCode == 401 || response.statusCode == 403 || response.statusCode == 426) {
+        debugPrint('jsonDecoded 401-403-426 on Throw $jsonDecoded');
+        return jsonDecoded;
+      } else
+        debugPrint('jsonDecoded on Throw $jsonDecoded');
+      throw jsonDecoded?['message'] ?? 'Unknown error';
+    } catch (e) {
+      if (e is FormatException) {
+        debugPrint('Format Exception: $e');
+      } else {
+        debugPrint('API call getAllOutlet  error: $e');
+      }
+    }
+    return null;
+  }
+
+   static Future<Map<String, dynamic>?> getDetailOutlet(int id) async {
+    try {
+      final token = await Utils.getToken();
+      final response = await _getResponseApi(
+        HttpMethod.get,
+        '/stores$id',
+        authorization: token?.accessToken,
+      );
+      debugPrint("resAttendance ${response.jsonString}");
+      final Map<String, dynamic>? jsonDecoded = jsonDecode(response.jsonString);
+      if (response.statusCode == 200) {
+        return jsonDecoded;
+      } else if (response.statusCode == 400 || response.statusCode == 401 || response.statusCode == 403 || response.statusCode == 426) {
+        debugPrint('jsonDecoded 401-403-426 on Throw $jsonDecoded');
+        return jsonDecoded;
+      } else
+        debugPrint('jsonDecoded on Throw $jsonDecoded');
+      throw jsonDecoded?['message'] ?? 'Unknown error';
+    } catch (e) {
+      if (e is FormatException) {
+        debugPrint('Format Exception: $e');
+      } else {
+        debugPrint('API call getDetailOutlet  error: $e');
+      }
+    }
+    return null;
+  }
+
+
+  static Future<Map<String, dynamic>?> getProduct(String id, {String? search}) async {
+    try {
+      final token = await Utils.getToken();
+      final response = await _getResponseApi(
+        HttpMethod.get,
+        '/stores/$id/products${search != null ? '?search=$search' : ''}',
+        authorization: token?.accessToken,
+      );
+      debugPrint("getProduct ${response.jsonString}");
+      final Map<String, dynamic>? jsonDecoded = jsonDecode(response.jsonString);
+      if (response.statusCode == 200) {
+        return jsonDecoded;
+      } else if (response.statusCode == 400 || response.statusCode == 401 || response.statusCode == 403 || response.statusCode == 426) {
+        debugPrint('jsonDecoded 401-403-426 on Throw $jsonDecoded');
+        return jsonDecoded;
+      } else
+        debugPrint('jsonDecoded on Throw $jsonDecoded');
+      throw jsonDecoded?['message'] ?? 'Unknown error';
+    } catch (e) {
+      if (e is FormatException) {
+        debugPrint('Format Exception: $e');
+      } else {
+        debugPrint('API call getProduct  error: $e');
+      }
+    }
+    return null;
+  }
+
+  static Future<Map<String, dynamic>?> postProductSelect(String body) async {
+    try {
+      final token = await Utils.getToken();
+      final response = await _getResponseApi(
+        HttpMethod.post,
+        '/report/attendance',
+        body: body,
+        authorization: token?.accessToken,
+      );
+      final Map<String, dynamic>? jsonDecoded = jsonDecode(response.jsonString);
+      debugPrint("postAttendance status ${response.statusCode}");
+      if (response.statusCode == 200)
+        return jsonDecoded;
+      else if (response.statusCode == 400 || response.statusCode == 401 || response.statusCode == 403 || response.statusCode == 426) {
+        debugPrint('jsonDecoded 401-403-426 on Throw $jsonDecoded');
+        return jsonDecoded;
+      } else
+        debugPrint('jsonDecoded on Throw $jsonDecoded');
+      throw jsonDecoded?['message'] ?? 'Unknown error';
+    } catch (e) {
+      if (e is FormatException) {
+        debugPrint('Format Exception: $e');
+      } else {
+        debugPrint('API call postCreateAttendance error: $e');
+      }
+    }
+    return null;
+  }
+
+
+
 }

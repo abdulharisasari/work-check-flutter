@@ -1,17 +1,18 @@
 class ProductModel {
-  int? id, price, pricePromo;
-  String? name, imgUrl, codeBarcode;
+  int? id,  availableStock;
+  String? name, imgUrl, codeBarcode, price;
   
-  ProductModel({this.id, this.price, this.pricePromo, this.name, this.imgUrl, this.codeBarcode});
+  ProductModel({this.id, this.price, this.name, this.imgUrl, this.codeBarcode, this.availableStock});
 
   factory ProductModel.fromJson(Map<String, dynamic>json){
     return ProductModel(
       id : json['id'],
-      price : json['price'],
-      pricePromo : json['price_promo'],
-      name: json['name'],
-      imgUrl: json['img_url'],
-      codeBarcode: json['code_barcode']
+      name: json['nama_produk'],
+      codeBarcode: json['barcode'],
+      imgUrl: json['image'],
+      availableStock: json['available'],
+      price: json['promo_price'],
+
     );
   }
   
@@ -21,11 +22,12 @@ class ProductModel {
 
     Map<String, dynamic> toJson()=>{
       'id': id,
-      'price': price,
-      'price_promo': pricePromo,
-      'name': name,
-      'img_url': imgUrl,
-      'code': codeBarcode
+      'nama_produk': name,
+      'barcode': codeBarcode,
+      'image': imgUrl,
+      'available': availableStock,
+      'promo_price': price,
+
     };
 
 }

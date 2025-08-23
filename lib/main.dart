@@ -3,7 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:workcheckapp/providers/app_provider.dart';
+import 'package:workcheckapp/providers/attandance_provider.dart';
 import 'package:workcheckapp/providers/auth_provider.dart';
+import 'package:workcheckapp/providers/outlet_provider.dart';
+import 'package:workcheckapp/providers/product_provider.dart';
 import 'package:workcheckapp/providers/user_provider.dart';
 import 'package:workcheckapp/routers/constant_routers.dart';
 import 'package:workcheckapp/routers/routers.dart';
@@ -26,6 +29,9 @@ class MyApp extends StatelessWidget {
         Provider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => AppProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
+        ChangeNotifierProvider(create: (_) => AttandanceProvider()),
+        ChangeNotifierProvider(create: (_) => OutletProvider()),
+        ChangeNotifierProvider(create: (_) => ProductProvider()),
         ],
       child: MaterialApp(
         title: 'Work Check',

@@ -1,15 +1,23 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:provider/provider.dart';
 import 'package:workcheckapp/commons/widgets/custom_button.dart';
+import 'package:workcheckapp/models/attendance_model.dart';
+import 'package:workcheckapp/providers/attandance_provider.dart';
 import 'package:workcheckapp/routers/constant_routers.dart';
+import 'package:workcheckapp/services/snack_bar.dart';
 import 'package:workcheckapp/services/themes.dart';
+import 'package:workcheckapp/services/utils.dart';
 import 'camera_view.dart';
 import 'face_detector_painter.dart';
 import 'package:workcheckapp/services/assets.dart';
+import 'package:http/http.dart' as http;
+
 
 class FaceDetectorPage extends StatefulWidget {
   const FaceDetectorPage({Key? key}) : super(key: key);
@@ -196,7 +204,9 @@ class _FaceDetectorPageState extends State<FaceDetectorPage> {
     try {
       await _cameraController!.stopImageStream();
 
+      // final image = await _cameraController!.takePicture();
       final image = await _cameraController!.takePicture();
+
       if (!mounted) return;
 
       
@@ -205,7 +215,6 @@ class _FaceDetectorPageState extends State<FaceDetectorPage> {
         MaterialPageRoute(
           builder: (_) => DisplayPictureScreen(
             imagePath: image.path,
-            
           ),
         ),
       );
@@ -216,37 +225,74 @@ class _FaceDetectorPageState extends State<FaceDetectorPage> {
   }
 }
 
+
 class DisplayPictureScreen extends StatefulWidget {
   final String imagePath;
 
-
-  const DisplayPictureScreen({
-    Key? key,
-    required this.imagePath,
-
-  }) : super(key: key);
+  const DisplayPictureScreen({super.key, required this.imagePath});
 
   @override
   State<DisplayPictureScreen> createState() => _DisplayPictureScreenState();
 }
 
-
-
 class _DisplayPictureScreenState extends State<DisplayPictureScreen> {
+  bool _isLoading = false;
   String locationText = 'Memuat lokasi...';
   DateTime? timestamp;
-
+  
   @override
   void initState() {
+    _getLocationAndTime();
     super.initState();
-    _init();
+  }
+  
+  Future<String> convertImageToBase64(String filePath) async {
+      final bytes = await File(filePath).readAsBytes();
+      return "data:image/jpeg;base64," + base64Encode(bytes);
+    }
+    
+  Future<void> createAttandance() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    final attandanceProv = Provider.of<AttandanceProvider>(context, listen: false);
+    final base64Image = await convertImageToBase64(widget.imagePath); // ini sudah ada
+
+    final attendanceModel = AttendanceModel(
+      id: 1,
+      userId: 1,
+      imgUrl: null, // pakai base64
+      date: timestamp.toString().split(' ')[0],
+      time: timestamp.toString().split(' ')[1].split('.')[0],
+      address: locationText,
+      status: 1,
+    );
+
+    try {
+      final response = await attandanceProv.createAttandance(context, attendanceModel);
+      if (response != null) {
+        if (response.code == 200) {
+          Navigator.pushReplacementNamed(context, attendanceRoute);
+        } else {
+          showSnackBar(context, response.message);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error in createAttandance: $e');
+      showSnackBar(context, 'Gagal mengirim absen. Silakan coba lagi.');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
-  void _init() async {
-    await _getLocationAndTime();
-  }
 
   Future<void> _getLocationAndTime() async {
+    setState(() {
+      _isLoading = true;
+    });
     try {
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
@@ -287,6 +333,7 @@ class _DisplayPictureScreenState extends State<DisplayPictureScreen> {
       setState(() {
         locationText = 'Error mendapatkan lokasi';
         timestamp = DateTime.now();
+        _isLoading = false;
       });
     }
   }
@@ -294,7 +341,7 @@ class _DisplayPictureScreenState extends State<DisplayPictureScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
+      body: !_isLoading?Center(child: CircularProgressIndicator()): Stack(
         fit: StackFit.expand,
         children: [
           Image.file(File(widget.imagePath), fit: BoxFit.cover),
@@ -350,11 +397,13 @@ class _DisplayPictureScreenState extends State<DisplayPictureScreen> {
                   SizedBox(height: 20),
                   Row(
                     children: [
-                      Expanded(child: CustomButton(text: "KIRIM ABSEN", onPressed: () {}, backgroundColor: Color(tealBreezeColor))),
+                      Expanded(child: CustomButton(text: "KIRIM ABSEN", onPressed: ()async {
+                        await createAttandance();
+                      }, backgroundColor: Color(tealBreezeColor))),
                       SizedBox(width: 20),
                       Expanded(
                           child: CustomButton(
-                        text: "KIRIM ABSEN",
+                        text: "ULANGI",
                         onPressed: () {
                           Navigator.pushReplacementNamed(context, cameraRoute);
                         },
@@ -372,3 +421,4 @@ class _DisplayPictureScreenState extends State<DisplayPictureScreen> {
     );
   }
 }
+

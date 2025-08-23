@@ -1,18 +1,24 @@
-class AttendanceModel {
-  int? id, statusId;
-  String? name, hours, date, address, imgUrl;
+import 'dart:io';
 
-  AttendanceModel({this.id,this.statusId, this.name, this.hours, this.date, this.address,this.imgUrl});
+class AttendanceModel {
+  int? id, status, userId;
+  String?  time, date, address, imgUrl, type, leaveType, notes;
+  AttendanceModel({this.id,this.status, this.time, this.date, this.address,this.imgUrl, this.userId, this.type, this.leaveType, this.notes});
 
   factory AttendanceModel.fromJson(Map<String, dynamic>json){
     return AttendanceModel(
       id: json['id'],
-      statusId: json['status_id'],
-      name : json['name'],
-      hours : json['hours'],
-      date : json['date'],
-      address : json['address'],
-      imgUrl : json['img_url'],
+      userId: json['user_id'],
+      status: json['status'],
+      imgUrl: json['image'],
+      address: json['address'],
+      type: json['type'],
+      leaveType: json['leave_type'],
+      notes: json['notes'],
+      date: json['date'],
+      time: json['time'],
+
+
     );
   }
 
@@ -22,12 +28,45 @@ class AttendanceModel {
 
   Map<String, dynamic> toJson()=>{
     'id' : id,
-    'status_id':statusId,
-    'name' : name,
-    'hours' : hours,
-    'date' : date,
-    'address' : address,
-    'img_url' : imgUrl,
+    'user_id' : userId,
+    'status':status,
+    'image': imgUrl,
+    'address': address,
+    'type': type,
+    'leave_type': leaveType,
+    'notes': notes,
+    'date': date,
+    'time': time,
+    
   };
 
+}
+
+
+class CheckinModel {
+  final String status;
+  final String address;
+  final String type;
+  final String date;
+  final String time;
+  final String? imagePath; // local file path
+
+  CheckinModel({
+    required this.status,
+    required this.address,
+    required this.type,
+    required this.date,
+    required this.time,
+    this.imagePath,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'status': status,
+      'address': address,
+      'type': type,
+      'date': date,
+      'time': time,
+    };
+  }
 }

@@ -4,7 +4,6 @@ import 'package:workcheckapp/providers/user_provider.dart';
 import 'package:workcheckapp/routers/constant_routers.dart';
 import 'package:workcheckapp/services/assets.dart';
 import 'package:workcheckapp/services/snack_bar.dart';
-import 'package:workcheckapp/services/themes.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});

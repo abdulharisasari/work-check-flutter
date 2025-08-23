@@ -1,12 +1,17 @@
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:workcheckapp/commons/widgets/custom_banner.dart';
 import 'package:workcheckapp/commons/widgets/custom_button.dart';
 import 'package:workcheckapp/commons/widgets/custom_list_data.dart';
 import 'package:workcheckapp/commons/widgets/custom_textfield.dart';
 import 'package:workcheckapp/models/outlet_model.dart';
 import 'package:workcheckapp/models/product_model.dart';
+import 'package:workcheckapp/providers/auth_provider.dart';
+import 'package:workcheckapp/providers/product_provider.dart';
+import 'package:workcheckapp/routers/constant_routers.dart';
+import 'package:workcheckapp/services/snack_bar.dart';
 import 'package:workcheckapp/services/themes.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -19,45 +24,70 @@ class DetailOutletPage extends StatefulWidget {
 }
 
 class _DetailOutletPageState extends State<DetailOutletPage> {
-  int selectedIndex = 0;
-  final Set<int> selectedIndexes = {};
-  List<ProductModel> listProduct = [
-    ProductModel(
-      id: 1,
-      name: "Sepatu Sneakers",
-      price: 500000,
-      pricePromo: 450000,
-      imgUrl: "https://via.placeholder.com/150",
-      codeBarcode: "1234567890123",
-    ),
-    ProductModel(
-      id: 2,
-      name: "Kaos Polo",
-      price: 150000,
-      pricePromo: 120000,
-      imgUrl: "https://via.placeholder.com/150",
-      codeBarcode: "234567uuuuuu8901234",
-    ),
-    ProductModel(
-      id: 3,
-      name: "Celana Jeans",
-      price: 300000,
-      pricePromo: 250000,
-      imgUrl: "https://via.placeholder.com/150",
-      codeBarcode: "3456789012345",
-    ),
-    ProductModel(
-      id: 4,
-      name: "Topi Baseball",
-      price: 80000,
-      pricePromo: 65000,
-      imgUrl: "https://via.placeholder.com/150",
-      codeBarcode: "4567890123456",
-    ),
-  ];
-
-  File? _imageFile;
+  final TextEditingController _searchTC = TextEditingController();
   final ImagePicker _picker = ImagePicker();
+  final Set<int> selectedIndexes = {};
+  List<ProductModel> listProduct = [];
+  File? _imageFile;
+  int selectedIndex = 0;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    _init();
+    super.initState();
+  }
+
+  void _init() async {
+    await _getHeaderProduct();
+
+    for (int i = 0; i < listProduct.length; i++) {
+    if (listProduct[i].availableStock == 1) {
+      selectedIndexes.add(i);
+    }}
+  }
+
+  Future<void> _getHeaderProduct() async {
+    setState(() {
+      _isLoading = true;
+    });
+    listProduct.clear();
+    final productProv = await Provider.of<ProductProvider>(context, listen: false);
+    try {
+      final _productState = await productProv.getProduct(context, "${widget.outletModel.id}", search: _searchTC.text);
+      if (_productState != null) {
+        setState(() {
+          listProduct = _productState;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error in getHeaderAttandance: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _selectedProduct(List<ProductModel> listProduct) async {
+    setState(() {
+      _isLoading = true;
+    });
+    final productProv = await Provider.of<ProductProvider>(context, listen: false);
+    try {
+      final response = await productProv.createProductSelect(context, listProduct);
+      if (response != null && response.code == 200) {
+        showSnackBar(context, response.message);
+      } else{
+        showSnackBar(context, "${response?.message}");
+      }
+    } catch (e) {
+      debugPrint('Error in _selectedProduct: $e');
+    }return null;
+  }
+
+
+
 
   Future<void> _pickImage(ImageSource source) async {
     if (source == ImageSource.camera) {
@@ -232,14 +262,14 @@ class _DetailOutletPageState extends State<DetailOutletPage> {
               itemCount: listProduct.length,
               itemBuilder: (context, index) {
                 final product = listProduct[index];
-                final isSelected = selectedIndexes.contains(index);
+                final isSelected =  selectedIndexes.contains(index);
                 return CustomListItem(
                   labelTitle: "Nama",
                   labelSubtitle1: "Harga",
                   labelSubtitle2: "Promo",
                   title: "${product.name ?? "-"}",
                   subtitle1: "${product.price ?? "-"}",
-                  subtitle2: "${product.pricePromo ?? "-"}",
+                  subtitle2: "${product.price ?? "-"}",
                   imageUrl: "${product.imgUrl ?? "-"}",
                   barcode: "${product.codeBarcode}",
                   selectable: true,
@@ -260,7 +290,19 @@ class _DetailOutletPageState extends State<DetailOutletPage> {
           ),
           CustomButton(
               text: "SIMPAN",
-              onPressed: () {
+              onPressed: ()async {
+                final selectedProducts = selectedIndexes.map((index) => listProduct[index]).toList();
+                final List<ProductModel> select = selectedProducts.map((e) {
+                  return ProductModel(
+                    id: e.id,
+                    availableStock: e.availableStock,
+                    // add other required fields depending on your model constructor
+                  );
+                }).toList();
+
+              
+               await _selectedProduct(select);
+
               })
         ],
       ),

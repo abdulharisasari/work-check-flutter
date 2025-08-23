@@ -7,10 +7,10 @@ class OutletModel {
   factory OutletModel.fromJson(Map<String, dynamic>json){
     return OutletModel(
       id: json['id'],
-      name : json['name'],
-      codeOutlet : json['code_outlet'],
-      address : json['address'],
-      imgUrl : json['img_url'],
+      name : json['nama_toko'],
+      codeOutlet : json['kode_toko'],
+      address : json['alamat'],
+      imgUrl : json['image'],
     );
   }
 
@@ -20,10 +20,10 @@ class OutletModel {
 
   Map<String, dynamic> toJson()=>{
     'id': id,
-    'name': name,
-    'code_outlet': codeOutlet,
-    'address': address,
-    'img_url': imgUrl,
+    'nama_toko': name,
+    'kode_toko': codeOutlet,
+    'alamat': address,
+    'image': imgUrl,
   };
 
 }

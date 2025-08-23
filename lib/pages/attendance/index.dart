@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:provider/provider.dart';
 import 'package:workcheckapp/commons/widgets/custom_button.dart';
 import 'package:workcheckapp/commons/widgets/custom_dialog.dart';
 import 'package:workcheckapp/commons/widgets/custom_textfield.dart';
 import 'package:workcheckapp/models/attendance_model.dart';
+import 'package:workcheckapp/providers/attandance_provider.dart';
 import 'package:workcheckapp/routers/constant_routers.dart';
 import 'package:workcheckapp/services/assets.dart';
 import 'package:workcheckapp/services/snack_bar.dart';
@@ -18,98 +20,46 @@ class AttendancePage extends StatefulWidget {
 }
 
 class _AttendancePageState extends State<AttendancePage> {
-  List<AttendanceModel> listAttendance = [
-    AttendanceModel(
-      id: 1,
-      statusId: 0,
-      name: "John Doe",
-      hours: "08:00 - 17:00",
-      date: "2025-08-21",
-      address: "Jakarta",
-      imgUrl: illustrationPeople,
-    ),
-    AttendanceModel(
-      id: 2,
-      statusId: 2,
-      name: "Jane Smith",
-      hours: "09:00 - 18:00",
-      date: "2025-08-21",
-      address: "Bandung",
-      imgUrl: illustrationPeople,
-    ),
-    AttendanceModel(
-      id: 2,
-      statusId: 1,
-      name: "Jane Smith",
-      hours: "09:00 - 18:00",
-      date: "2025-08-21",
-      address: "Bandung",
-      imgUrl: illustrationPeople,
-    ),
-    AttendanceModel(
-      id: 2,
-      statusId: 1,
-      name: "Jane Smith",
-      hours: "09:00 - 18:00",
-      date: "2025-08-21",
-      address: "Bandung",
-      imgUrl: illustrationPeople,
-    ),
-    AttendanceModel(
-      id: 2,
-      statusId: 1,
-      name: "Jane Smith",
-      hours: "09:00 - 18:00",
-      date: "2025-08-21",
-      address: "Bandung",
-      imgUrl: illustrationPeople,
-    ),
-    AttendanceModel(
-      id: 2,
-      statusId: 1,
-      name: "Jane Smith",
-      hours: "09:00 - 18:00",
-      date: "2025-08-21",
-      address: "Bandung",
-      imgUrl: illustrationPeople,
-    ),
-    AttendanceModel(
-      id: 2,
-      statusId: 1,
-      name: "Jane Smith",
-      hours: "09:00 - 18:00",
-      date: "2025-08-21",
-      address: "Bandung",
-      imgUrl: illustrationPeople,
-    ),
-    AttendanceModel(
-      id: 2,
-      statusId: 1,
-      name: "Jane Smith",
-      hours: "09:00 - 18:00",
-      date: "2025-08-21",
-      address: "Bandung",
-      imgUrl: illustrationPeople,
-    ),
-    AttendanceModel(
-      id: 2,
-      statusId: 1,
-      name: "Jane Smith",
-      hours: "09:00 - 18:00",
-      date: "2025-08-21",
-      address: "Bandung",
-      imgUrl: illustrationPeople,
-    ),
-  ];
+ List<AttendanceModel> listAttendance = [];
 
  String? selectedValue; 
  String? selectedHari;
  bool _isAttandence = true;
+ bool _isLoading = false;
 
   @override
   void initState() {
+    _init();
     super.initState();
   }
+
+  void _init() async {
+    await _getHeaderAttandance();
+  }
+
+  Future<void> _getHeaderAttandance() async{
+    setState(() {
+      _isLoading = true;
+    });
+    listAttendance.clear();
+    final attandanceProv = await  Provider.of<AttandanceProvider>(context, listen: false);
+    try {
+      final _attandanceState = await attandanceProv.getHeaderAttendance(context);
+      if(_attandanceState != null){
+        setState(() {
+          listAttendance = _attandanceState;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error in getHeaderAttandance: $e');
+    }finally{
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+
 
   void _showAttendanceDialog()  {
     showDialog(
@@ -167,7 +117,7 @@ Future<void> _checkLocationPermission() async {
  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: !_isAttandence? _buildFormLeave(): _buildDashboard()
+      body:_isLoading? Center(child: CircularProgressIndicator()): !_isAttandence? _buildFormLeave(): _buildDashboard()
     );
   }
 
@@ -230,7 +180,9 @@ Future<void> _checkLocationPermission() async {
                 children: [
                   _listAttendence(),
                   SizedBox(height: 15),
-                  CustomButton(text: "DAFTAR TOKO", onPressed: () {})
+                  CustomButton(text: "DAFTAR TOKO", onPressed: () {
+                      Navigator.pushNamed(context, outletRoute);
+                    })
               
                 ],
               ),
@@ -333,7 +285,7 @@ Future<void> _checkLocationPermission() async {
           SizedBox(height: 20),
           CustomTextField(label: 'Notes', maxLines: 3, isTextarea: true),
           SizedBox(height: 40,),
-          CustomButton(text: "KIRIM PERMOHONAN", onPressed: (){Navigator.pushNamed(context, outletRoute);}),
+          CustomButton(text: "KIRIM PERMOHONAN", onPressed: (){}),
           SizedBox(height: 20),
         ],
       ),
@@ -456,12 +408,12 @@ Future<void> _checkLocationPermission() async {
 
   Widget _listAttendence() {
     return Expanded(
-      child: ListView.builder(
+      child:listAttendance.isEmpty?Center(child: Text("No Data Available")): ListView.builder(
         padding: EdgeInsets.zero,
         itemCount: listAttendance.length,
         itemBuilder: (context, index) {
           final attendance = listAttendance[index];
-          return _buildHeaderAttandance(attendance.imgUrl ?? '', attendance.hours ?? '', attendance.date ?? '', attendance.address ?? '', attendance.statusId!);
+          return _buildHeaderAttandance(attendance.imgUrl ?? '', attendance.time ?? '', attendance.date ?? '', attendance.address ?? '', attendance.status!);
         },
       ),
     );
@@ -481,7 +433,24 @@ Future<void> _checkLocationPermission() async {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(
-             child: statusId == 1 ? Image.asset(pathImg, height: 70, width: 70): Container(
+                child: statusId == 1
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(8), // rounded 8
+                        child: Image.network(
+                          pathImg,
+                          width: 70,
+                          height: 70,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              width: 70,
+                              height: 70,
+                              child: Icon(Icons.image_not_supported, size: 40, color: Colors.grey),
+                            );
+                          },
+                        ),
+                      )
+                    : Container(
                height: 70,
                width: 70,
                decoration: BoxDecoration(borderRadius: BorderRadius.all(Radius.circular(8)), color: statusId == 0 ? Color(coralFlameColor) : Color(mintGreenColor)),
@@ -489,6 +458,7 @@ Future<void> _checkLocationPermission() async {
                child: Column(
                  mainAxisAlignment: MainAxisAlignment.center,
                  children: [
+                   
                    Image.asset(statusId == 0 ? icSick : icLeave, height: 28, width: 28),
                    Text(
                      "${statusId == 0 ? "Sakit" : "Izin"}",
@@ -499,6 +469,7 @@ Future<void> _checkLocationPermission() async {
              )),
             SizedBox(width: 10),
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
                   width: 50,
@@ -512,14 +483,29 @@ Future<void> _checkLocationPermission() async {
                     ],
                   ),
                 ),
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _textCustom(": $hours"),
-                    _textCustom(": $date"),
-                    _textCustom(": $address")
-                  ],
+                Container(
+                  width: 10,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _textCustom(":"),
+                      _textCustom(":"),
+                      _textCustom(":")
+                    ],
+                  ),
+                ),
+                Container(
+                   width: 170,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _textCustom("$hours"),
+                      _textCustom("$date"),
+                      _textCustom("$address")
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -530,6 +516,6 @@ Future<void> _checkLocationPermission() async {
   }
 
   Widget _textCustom(String text) {
-    return Text(text, style: TextStyle(fontSize: 10, color: Color(darkGreyColor)));
+    return Text(text,maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 10, color: Color(darkGreyColor)));
   }
 }
