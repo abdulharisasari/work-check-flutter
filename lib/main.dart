@@ -1,11 +1,14 @@
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:workcheckapp/routers/constant_routers.dart';
 import 'package:workcheckapp/routers/routers.dart';
 import 'package:workcheckapp/services/themes.dart';
 
-
-void main() {
+List<CameraDescription> cameras = [];
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  cameras = await availableCameras();
   runApp(const MyApp());
 }
 

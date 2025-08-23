@@ -38,7 +38,7 @@ Widget build(BuildContext context) {
         backgroundColor: isOutline ? Colors.white : backgroundColor,
         foregroundColor: textColor,
         elevation: 3, 
-        side: isOutline ? BorderSide(color: borderColor ?? textColor, width: 1) : null,
+        side:  BorderSide(color: borderColor ?? backgroundColor, width: 1),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(borderRadius),
         ),

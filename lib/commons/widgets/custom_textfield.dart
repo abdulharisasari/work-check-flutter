@@ -10,6 +10,7 @@ class CustomTextField extends StatelessWidget {
   final int maxLines; // untuk textarea
   final bool isTextarea; 
   final String? hintext;
+  final int? hintextColor;
 
   const CustomTextField({
     Key? key,
@@ -20,7 +21,8 @@ class CustomTextField extends StatelessWidget {
     this.focusNode,
     this.maxLines = 1,
     this.isTextarea = false,
-    this.hintext
+    this.hintext,
+    this.hintextColor
   }) : super(key: key);
 
   @override
@@ -28,20 +30,25 @@ class CustomTextField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 15.0,
-            color: Color(darkGreyColor)
-          ),
+        if(label !="")Column(
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 15.0,
+                color: Color(darkGreyColor)
+              ),
+            ),
+            SizedBox(height: 15),
+          ],
         ),
-        SizedBox(height: 15),
+        
         Container(
           height: maxLines == 1? 55: 80,
           width: double.infinity,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.all(Radius.circular(8)),
-            border: Border.all(width: 1.0, color: Color(darkGreyColor)),
+            border: Border.all(width: 1.0, color: hintextColor != null ? Color(hintextColor!) : Color(darkGreyColor)),
           ),
           child: TextField(
             controller: controller,
@@ -53,8 +60,9 @@ class CustomTextField extends StatelessWidget {
             style: TextStyle(color: Colors.black),
             decoration: InputDecoration(
               filled: true,
-              fillColor: Color(pureWhiteColor),
+              fillColor: Colors.transparent,
               hintText: hintext,
+              hintStyle: TextStyle(color:hintextColor != null? Color(hintextColor!):Color(darkGreyColor)),
               contentPadding: EdgeInsets.symmetric(vertical: 18, horizontal: 10),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),

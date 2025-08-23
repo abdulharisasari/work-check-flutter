@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:workcheckapp/commons/widgets/custom_button.dart';
 import 'package:workcheckapp/commons/widgets/custom_dialog.dart';
 import 'package:workcheckapp/commons/widgets/custom_textfield.dart';
 import 'package:workcheckapp/models/attendance_model.dart';
+import 'package:workcheckapp/routers/constant_routers.dart';
 import 'package:workcheckapp/services/assets.dart';
 import 'package:workcheckapp/services/themes.dart';
 import 'package:workcheckapp/services/utils.dart';
@@ -101,7 +103,7 @@ class _AttendancePageState extends State<AttendancePage> {
 
  String? selectedValue; 
  String? selectedHari;
- bool _isAttandence = false;
+ bool _isAttandence = true;
 
   @override
   void initState() {
@@ -115,8 +117,9 @@ class _AttendancePageState extends State<AttendancePage> {
         title: "Pilih Kehadiran",
         confirmText: "Masuk Kerja",
         cancelText: "Izin Absen",
-        onConfirm: () {
-          Navigator.of(context).pop();
+        onConfirm: ()async {
+          await _checkLocationPermission();
+          Navigator.pushNamed(context, cameraRoute);
           setState(() {
             _isAttandence = true;
           });
@@ -130,6 +133,46 @@ class _AttendancePageState extends State<AttendancePage> {
       ),
     );
   }
+
+
+
+Future<void> _checkLocationPermission() async {
+  bool serviceEnabled;
+  LocationPermission permission;
+
+  // Cek service lokasi
+  serviceEnabled = await Geolocator.isLocationServiceEnabled();
+  if (!serviceEnabled) {
+    // Kalau service mati, tampilkan dialog atau snackbar
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Aktifkan lokasi terlebih dahulu!')),
+    );
+    return;
+  }
+
+  permission = await Geolocator.checkPermission();
+  if (permission == LocationPermission.denied) {
+    permission = await Geolocator.requestPermission();
+    if (permission == LocationPermission.denied) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Izin lokasi ditolak')),
+      );
+      return;
+    }
+  }
+
+  if (permission == LocationPermission.deniedForever) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Izin lokasi ditolak permanen, buka pengaturan.')),
+    );
+    return;
+  }
+
+  // Kalau izin diberikan, langsung bisa pakai kamera
+  setState(() {
+    // Bisa set flag kalau lokasi siap, misal _locationReady = true;
+  });
+}
 
  @override
   Widget build(BuildContext context) {
@@ -179,7 +222,7 @@ class _AttendancePageState extends State<AttendancePage> {
             clipBehavior: Clip.none,
             children: [
               _buildBanner(),
-              Positioned(top: 70, left: 25,right: 10, child: Row(
+              Positioned(top: 70, left: 25,right: 0, child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   _backTitle(),
@@ -300,7 +343,7 @@ class _AttendancePageState extends State<AttendancePage> {
           SizedBox(height: 20),
           CustomTextField(label: 'Notes', maxLines: 3, isTextarea: true),
           SizedBox(height: 40,),
-          CustomButton(text: "KIRIM PERMOHONAN", onPressed: (){}),
+          CustomButton(text: "KIRIM PERMOHONAN", onPressed: (){Navigator.pushNamed(context, outletRoute);}),
           SizedBox(height: 20),
         ],
       ),
@@ -409,7 +452,6 @@ class _AttendancePageState extends State<AttendancePage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          
           Text("Absensi",
             style: TextStyle(
               fontSize: 24.0,

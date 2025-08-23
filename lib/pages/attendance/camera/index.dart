@@ -1,0 +1,374 @@
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:camera/camera.dart';
+import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:workcheckapp/commons/widgets/custom_button.dart';
+import 'package:workcheckapp/routers/constant_routers.dart';
+import 'package:workcheckapp/services/themes.dart';
+import 'camera_view.dart';
+import 'face_detector_painter.dart';
+import 'package:workcheckapp/services/assets.dart';
+
+class FaceDetectorPage extends StatefulWidget {
+  const FaceDetectorPage({Key? key}) : super(key: key);
+
+  @override
+  State<FaceDetectorPage> createState() => _FaceDetectorPageState();
+}
+
+class _FaceDetectorPageState extends State<FaceDetectorPage> {
+  final FaceDetector _faceDetector = FaceDetector(
+    options: FaceDetectorOptions(
+      enableContours: true,
+      enableClassification: true,
+    ),
+  );
+
+  CameraController? _cameraController;
+  bool _canProcess = true;
+  bool _isBusy = false;
+  bool _pictureTaken = false;
+  bool _faceInsideGuide = false;
+  bool _facesDetected = false;
+  CustomPaint? _customPaint;
+
+  @override
+  void dispose() {
+    _canProcess = false;
+    _faceDetector.close();
+    _cameraController?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        CameraView(
+          title: '',
+          customPaint: _customPaint,
+          onImage: processImage,
+          initialDirection: CameraLensDirection.front,
+          onCameraControllerReady: (controller) {
+            _cameraController = controller;
+          },
+        ),
+        Positioned(
+          top: 40,
+          left: 20,
+          child: IconButton(
+            icon: const Icon(Icons.chevron_left, color: Colors.white, size: 28),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+        // if (!_facesDetected)
+        //   Positioned(
+        //     top: 180,
+        //     left: 0,
+        //     right: 0,
+        //     child: Center(
+        //       child: Container(
+        //         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        //         color: Colors.black54,
+        //         child: const Text(
+        //           'Wajah tidak terdeteksi',
+        //           style: TextStyle(color: Colors.white, fontSize: 18),
+        //         ),
+        //       ),
+        //     ),
+        //   ),
+        if (!_facesDetected)
+          Positioned(
+            top: 180,
+            left: 20,
+            right: 20,
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                child: Image.asset(frameSelfiePng, height: 300,),
+              ),
+            ),
+          ),
+        if (!_facesDetected)
+
+        // if (_faceInsideGuide && !_pictureTaken)
+          Positioned(
+            bottom: 50,
+            left: 0,
+            right: 0,
+            child: Center(
+              child:Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Color(pureWhiteColor)
+                ),
+                child: IconButton(
+                  onPressed: _takePicture,
+                  icon:  Icon(Icons.camera_alt, size: 24.0),
+                ),
+              ),
+              
+            ),
+          ),
+      ],
+    );
+  }
+
+  Future<void> processImage(InputImage inputImage) async {
+    if (!_canProcess || _isBusy || _pictureTaken) return;
+    _isBusy = true;
+
+    final faces = await _faceDetector.processImage(inputImage);
+    _facesDetected = faces.isNotEmpty;
+
+    if (inputImage.inputImageData?.size != null && inputImage.inputImageData?.imageRotation != null) {
+      final guideBox = Rect.fromLTWH(
+        0,
+        0,
+        inputImage.inputImageData!.size.width.toDouble(),
+        inputImage.inputImageData!.size.height.toDouble(),
+      );
+
+      bool faceDetected = false;
+      for (final face in faces) {
+        final rect = Rect.fromLTRB(
+          translateX(face.boundingBox.left, inputImage.inputImageData!.imageRotation, inputImage.inputImageData!.size),
+          translateY(face.boundingBox.top, inputImage.inputImageData!.imageRotation, inputImage.inputImageData!.size),
+          translateX(face.boundingBox.right, inputImage.inputImageData!.imageRotation, inputImage.inputImageData!.size),
+          translateY(face.boundingBox.bottom, inputImage.inputImageData!.imageRotation, inputImage.inputImageData!.size),
+        );
+        if (guideBox.contains(rect.topLeft) && guideBox.contains(rect.bottomRight)) {
+          faceDetected = true;
+          break;
+        }
+      }
+
+      if (_faceInsideGuide != faceDetected) {
+        setState(() {
+          _faceInsideGuide = faceDetected;
+        });
+      }
+
+      _customPaint = CustomPaint(
+        painter: FaceDetectorPainter(
+          faces,
+          inputImage.inputImageData!.size,
+          inputImage.inputImageData!.imageRotation,
+          guideBox,
+          (_) {},
+        ),
+      );
+    } else {
+      _customPaint = null;
+    }
+
+    _isBusy = false;
+    if (mounted) setState(() {});
+  }
+
+  double translateX(double x, InputImageRotation rotation, Size size) {
+    switch (rotation) {
+      case InputImageRotation.rotation90deg:
+        return x * size.width / size.height;
+      case InputImageRotation.rotation270deg:
+        return size.width - x * size.width / size.height;
+      default:
+        return x;
+    }
+  }
+
+  double translateY(double y, InputImageRotation rotation, Size size) {
+    switch (rotation) {
+      case InputImageRotation.rotation90deg:
+      case InputImageRotation.rotation270deg:
+        return y * size.height / size.width;
+      default:
+        return y;
+    }
+  }
+
+  Future<void> _takePicture() async {
+    if (_cameraController == null || _pictureTaken) return;
+    _pictureTaken = true;
+
+    try {
+      await _cameraController!.stopImageStream();
+
+      final image = await _cameraController!.takePicture();
+      if (!mounted) return;
+
+      
+      await Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => DisplayPictureScreen(
+            imagePath: image.path,
+            
+          ),
+        ),
+      );
+    } catch (e) {
+      print('Error taking picture: $e');
+      _pictureTaken = false;
+    }
+  }
+}
+
+class DisplayPictureScreen extends StatefulWidget {
+  final String imagePath;
+
+
+  const DisplayPictureScreen({
+    Key? key,
+    required this.imagePath,
+
+  }) : super(key: key);
+
+  @override
+  State<DisplayPictureScreen> createState() => _DisplayPictureScreenState();
+}
+
+
+
+class _DisplayPictureScreenState extends State<DisplayPictureScreen> {
+  String locationText = 'Memuat lokasi...';
+  DateTime? timestamp;
+
+  @override
+  void initState() {
+    super.initState();
+    _init();
+  }
+
+  void _init() async {
+    await _getLocationAndTime();
+  }
+
+  Future<void> _getLocationAndTime() async {
+    try {
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Izin lokasi ditolak')),
+        );
+        return;
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      final placemarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+        localeIdentifier: "id_ID",
+      );
+
+      String loc = "Tidak diketahui";
+      if (placemarks.isNotEmpty) {
+        final place = placemarks.first;
+        loc = "${place.subLocality ?? ''}, ${place.locality ?? ''}, ${place.administrativeArea ?? ''}";
+      }
+
+      DateTime now = DateTime.now();
+
+      setState(() {
+        locationText = loc;
+        timestamp = now;
+      });
+    } catch (e) {
+      print('Error mendapatkan lokasi: $e');
+      setState(() {
+        locationText = 'Error mendapatkan lokasi';
+        timestamp = DateTime.now();
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.file(File(widget.imagePath), fit: BoxFit.cover),
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              padding: EdgeInsets.all(20),
+              color: Color(primaryColor).withOpacity(0.7),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 30,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Image.asset(
+                              icDate,
+                              height: 24,
+                            ),
+                            SizedBox(height: 10),
+                            Container(height: 70, alignment: Alignment.topLeft, child: Icon(Icons.location_on, size: 24, color: Color(coralFlameColor))),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        width: 300,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              timestamp != null ? '${timestamp!.toLocal()}' : 'Memuat waktu...',
+                              style: const TextStyle(color: Colors.white, fontSize: 16),
+                            ),
+                            SizedBox(height: 10),
+                            Container(
+                              height: 70,
+                              child: Text(
+                                locationText,
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(color: Colors.white, fontSize: 16),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(child: CustomButton(text: "KIRIM ABSEN", onPressed: () {}, backgroundColor: Color(tealBreezeColor))),
+                      SizedBox(width: 20),
+                      Expanded(
+                          child: CustomButton(
+                        text: "KIRIM ABSEN",
+                        onPressed: () {
+                          Navigator.pushReplacementNamed(context, cameraRoute);
+                        },
+                        backgroundColor: Color(primaryColor).withOpacity(0.0),
+                        borderColor: Color(tealBreezeColor),
+                      )),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

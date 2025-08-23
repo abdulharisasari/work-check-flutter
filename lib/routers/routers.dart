@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:workcheckapp/models/outlet_model.dart';
+import 'package:workcheckapp/pages/attendance/camera/index.dart';
 import 'package:workcheckapp/pages/attendance/index.dart';
 import 'package:workcheckapp/pages/login/index.dart';
 import 'package:workcheckapp/pages/outlet/detail-outlet/index.dart';
@@ -36,11 +38,15 @@ class AppRouter {
         );
 
       case detailOutletRoute:
+      final outlet = settings.arguments as OutletModel;
         return MaterialPageRoute(
           settings: settings,
-          builder: (_) => const DetailOutletPage(),
+          builder: (_) => DetailOutletPage(outletModel: outlet),
         );
-
+      case cameraRoute:
+      return MaterialPageRoute(
+        settings: settings,
+        builder:(_)=>FaceDetectorPage());
       default:
         return MaterialPageRoute(
           builder: (_) => Scaffold(

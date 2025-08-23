@@ -11,3 +11,4 @@ const String illustrationPeople = 'assets/images/ex-people.png';
 const String icDate = 'assets/images/ic-date.png';
 const String icLeave = 'assets/images/ic-leave.png';
 const String icSick = 'assets/images/ic-sick.png';
+const String icBarcode = 'assets/images/ic-barcode.png';
