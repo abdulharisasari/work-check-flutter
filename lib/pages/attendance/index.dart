@@ -6,6 +6,7 @@ import 'package:workcheckapp/commons/widgets/custom_textfield.dart';
 import 'package:workcheckapp/models/attendance_model.dart';
 import 'package:workcheckapp/routers/constant_routers.dart';
 import 'package:workcheckapp/services/assets.dart';
+import 'package:workcheckapp/services/snack_bar.dart';
 import 'package:workcheckapp/services/themes.dart';
 import 'package:workcheckapp/services/utils.dart';
 
@@ -139,14 +140,9 @@ class _AttendancePageState extends State<AttendancePage> {
 Future<void> _checkLocationPermission() async {
   bool serviceEnabled;
   LocationPermission permission;
-
-  // Cek service lokasi
   serviceEnabled = await Geolocator.isLocationServiceEnabled();
   if (!serviceEnabled) {
-    // Kalau service mati, tampilkan dialog atau snackbar
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Aktifkan lokasi terlebih dahulu!')),
-    );
+    showSnackBar(context, "Layanan lokasi tidak aktif. Silakan aktifkan layanan lokasi.");
     return;
   }
 
@@ -154,23 +150,17 @@ Future<void> _checkLocationPermission() async {
   if (permission == LocationPermission.denied) {
     permission = await Geolocator.requestPermission();
     if (permission == LocationPermission.denied) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Izin lokasi ditolak')),
-      );
+      showSnackBar(context, "Izin lokasi ditolak.");
       return;
     }
   }
 
   if (permission == LocationPermission.deniedForever) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Izin lokasi ditolak permanen, buka pengaturan.')),
-    );
+    showSnackBar(context, "Izin lokasi ditolak secara permanen, silakan atur di pengaturan.");
     return;
   }
 
-  // Kalau izin diberikan, langsung bisa pakai kamera
   setState(() {
-    // Bisa set flag kalau lokasi siap, misal _locationReady = true;
   });
 }
 

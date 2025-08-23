@@ -1,4 +1,6 @@
 //Primary
+import 'package:flutter/material.dart';
+
 const int primaryColor = 0xFF0B1335;
 const int secondaryColor = 0xFF8BD1D9;
 
@@ -16,3 +18,7 @@ const int softGrey3Color = 0xFFF2F4F8;
 const int softGrey4Color = 0xFFD9D9D9;
 
 const int mintGreenColor = 0xFF78D6A3;
+
+
+double width(BuildContext context) => MediaQuery.of(context).size.width;
+double height(BuildContext context) => MediaQuery.of(context).size.height;
