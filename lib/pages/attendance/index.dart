@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
@@ -12,6 +14,7 @@ import 'package:workcheckapp/providers/auth_provider.dart';
 import 'package:workcheckapp/providers/user_provider.dart';
 import 'package:workcheckapp/routers/constant_routers.dart';
 import 'package:workcheckapp/services/assets.dart';
+import 'package:workcheckapp/services/db_local.dart';
 import 'package:workcheckapp/services/snack_bar.dart';
 import 'package:workcheckapp/services/themes.dart';
 import 'package:workcheckapp/services/utils.dart';
@@ -39,8 +42,11 @@ class _AttendancePageState extends State<AttendancePage> {
 
   @override
   void initState() {
-    _init();
     super.initState();
+    _init();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _syncPendingAttendance();
+    });
   }
 
   void _init() async {
@@ -88,13 +94,91 @@ class _AttendancePageState extends State<AttendancePage> {
     }
   }
 
+  // Future<void> createAttandance() async {
+  //   if (_isLoading) return;
+  //   setState(() => _isLoading = true);
+  //   final attendanceDb = LocalOfflineDatabase<AttendanceModel>(boxName: 'attendance_offline', fromJson: (json) => AttendanceModel.fromJson(json), toJson: (attendance) => attendance.toJson());
+  //   final attandanceProv = Provider.of<AttandanceProvider>(context, listen: false);
+  //   final now = DateTime.now();
+  //   if (_dateTC.text.isEmpty || _notesTC.text.isEmpty) {
+  //     showSnackBar(context,"Mohon isi ${_dateTC.text.isEmpty ? "Tanggal Izin" : _notesTC.text.isEmpty ? "Notes" : selectedHari == null ? "Waktu izin" : selectedLeave == null ? "Jenis Izin" : selectedHari == null ? "Waktu Izin" : "Semua"}");
+  //     setState(() => _isLoading = false);
+  //     return;
+  //   }
+  //   final attendanceModel = AttendanceModel(
+  //     leaveType: selectedLeave,
+  //     time: now.toString().split(' ')[1].split('.')[0],
+  //     date: _dateTC.text,
+  //     address: locationText,
+  //     notes: _notesTC.text,
+  //     status: 0,
+  //   );
+
+  //   try {
+  //     final response = await attandanceProv.createAttandance(context, attendanceModel).timeout(const Duration(seconds: 2));;
+  //     if (response != null) {
+  //       if (response.code == 200) {
+  //         showSnackBar(context, response.message, backgroundColor: Color(mintGreenColor));
+  //         await attendanceDb.clearAll();
+  //         Navigator.pushReplacementNamed(context, attendanceRoute);
+  //       }else if (response.code == 403) {
+  //         await attendanceDb.addItem(attendanceModel);
+  //         showSnackBar(context, response.message ?? "Absen disimpan offline");
+  //       } else {
+  //         showSnackBar(context, response.message);
+  //       }
+  //     }
+  //   } catch (e) {
+  //     debugPrint('Error in createAttandance: $e');
+  //     showSnackBar(context, 'Gagal mengirim absen. Silakan coba lagi.');
+  //   }
+  // }
+  
+  Future<void> _syncPendingAttendance() async {
+    final attendanceDb = LocalOfflineDatabase<AttendanceModel>(
+      boxName: 'attendance_offline',
+      fromJson: (json) => AttendanceModel.fromJson(json),
+      toJson: (attendance) => attendance.toJson(),
+    );
+
+    final provider = Provider.of<AttandanceProvider>(context, listen: false);
+    final pending = await attendanceDb.getPendingItems();
+
+    for (var item in pending) {
+      try {
+        final response = await provider.createAttandance(context, item);
+        if (response != null && response.code == 200) {
+          await attendanceDb.removeItem(item.hashCode);
+          debugPrint("Berhasil sync attendance offline");
+        }
+      } catch (e) {
+        debugPrint("Gagal sync attendance: $e");
+      }
+    }
+  }
+
   Future<void> createAttandance() async {
+    if (_isLoading) return; // cegah klik berulang
+
+    setState(() => _isLoading = true);
+
+    final attendanceDb = LocalOfflineDatabase<AttendanceModel>(
+      boxName: 'attendance_offline',
+      fromJson: (json) => AttendanceModel.fromJson(json),
+      toJson: (attendance) => attendance.toJson(),
+    );
+
     final attandanceProv = Provider.of<AttandanceProvider>(context, listen: false);
     final now = DateTime.now();
+
     if (_dateTC.text.isEmpty || _notesTC.text.isEmpty) {
-      showSnackBar(context,"Mohon isi ${_dateTC.text.isEmpty ? "Tanggal Izin" : _notesTC.text.isEmpty ? "Notes" : selectedHari == null ? "Waktu izin" : selectedLeave == null ? "Jenis Izin" : selectedHari == null ? "Waktu Izin" : "Semua"}");
+      showSnackBar(
+          context,
+          "Mohon isi ${_dateTC.text.isEmpty ? "Tanggal Izin" : _notesTC.text.isEmpty ? "Notes" : selectedHari == null ? "Waktu izin" : selectedLeave == null ? "Jenis Izin" : "Semua"}");
+      setState(() => _isLoading = false);
       return;
     }
+
     final attendanceModel = AttendanceModel(
       leaveType: selectedLeave,
       time: now.toString().split(' ')[1].split('.')[0],
@@ -105,22 +189,29 @@ class _AttendancePageState extends State<AttendancePage> {
     );
 
     try {
-      final response = await attandanceProv.createAttandance(context, attendanceModel);
-      if (response != null) {
-        if (response.code == 200) {
-          showSnackBar(context, response.message, backgroundColor: Color(mintGreenColor));
-          Navigator.pushReplacementNamed(context, attendanceRoute);
-        }else if (response.code == 403) {
-          showSnackBar(context, response.message);
-        } else {
-          showSnackBar(context, response.message);
-        }
+      // kasih timeout 2 detik biar gak nunggu lama
+      final response = await attandanceProv.createAttandance(context, attendanceModel).timeout(const Duration(seconds: 2));
+
+      if (response != null && response.code == 200) {
+        showSnackBar(context, response.message, backgroundColor: Color(mintGreenColor));
+        await attendanceDb.clearAll(); // bersihkan offline kalau berhasil
+        Navigator.pushReplacementNamed(context, attendanceRoute);
+      } else {
+        await attendanceDb.addItem(attendanceModel);
+        showSnackBar(context, response?.message ?? "Absen disimpan offline");
       }
+    } on TimeoutException {
+      await attendanceDb.addItem(attendanceModel);
+      showSnackBar(context, "Timeout. Absen disimpan offline");
     } catch (e) {
-      debugPrint('Error in createAttandance: $e');
-      showSnackBar(context, 'Gagal mengirim absen. Silakan coba lagi.');
+      debugPrint("Error in createAttandance: $e");
+      await attendanceDb.addItem(attendanceModel);
+      showSnackBar(context, "Gagal mengirim absen. Absen disimpan offline");
+    } finally {
+      setState(() => _isLoading = false);
     }
   }
+
 
   Future<void> _getLocationAndTime() async {
     setState(() {});

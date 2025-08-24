@@ -1,15 +1,17 @@
 class PromoModel {
   String? nameProduct, imageUrl;
-  int? priceNormal, pricePromo;
+  int? priceNormal, pricePromo, id;
 
-  PromoModel({this.nameProduct, this.imageUrl, this.priceNormal, this.pricePromo});
+  PromoModel({this.nameProduct, this.imageUrl, this.priceNormal, this.pricePromo, this.id});
 
   factory PromoModel.fromJson(Map<String, dynamic> json){
     return PromoModel(
       nameProduct: json['nama_produk'],
       priceNormal: json['harga_normal'],
       pricePromo: json['harga_promo'],
-      imageUrl: json['image']
+      imageUrl: json['image'],
+      id: json['id'],
+
     );
   }
   
@@ -22,6 +24,7 @@ class PromoModel {
     'harga_normal':priceNormal,
     'harga_promo':pricePromo,
     'image':imageUrl,
+    'id':id,
   };
 
 }

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:image/image.dart' as img;
 
 import 'package:flutter/material.dart';
@@ -96,6 +97,11 @@ class Utils {
     final resized = img.copyResize(image, width: 400);
     final jpg = img.encodeJpg(resized, quality: 30);
     return base64Encode(jpg);
+  }
+
+  static Future<bool> checkConnection() async {
+    var connectivityResult = await Connectivity().checkConnectivity();
+    return connectivityResult != ConnectivityResult.none;
   }
 }
 

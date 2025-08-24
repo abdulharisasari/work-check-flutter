@@ -12,11 +12,13 @@ import 'package:workcheckapp/providers/user_provider.dart';
 import 'package:workcheckapp/routers/constant_routers.dart';
 import 'package:workcheckapp/routers/routers.dart';
 import 'package:workcheckapp/services/themes.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 List<CameraDescription> cameras = [];
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   cameras = await availableCameras();
+  await Hive.initFlutter();
   runApp(const MyApp());
 }
 
