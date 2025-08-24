@@ -38,12 +38,36 @@ class AttandanceProvider extends ChangeNotifier {
     }return null;
   }
 
+  Future<AttendanceModel?> getTodayAttendance(BuildContext context) async {
+    try {
+      final response = await Api.getTodayAttandance();
+      if (response == null || response.isEmpty) {
+        return null;
+      }
+      final _response = Res.Response.fromJson(response);
+      if (_response.code == 200) {
+        final AttendanceModel data = AttendanceModel.fromJson(response['data']);
+        debugPrint('data getTodayAttendance prov: $data');
+        data;
+        return data;
+      } else if (_response.code == 400 || _response.code == 401 || _response.code == 403 || _response.code == 426) {
+        final authProv = Provider.of<AuthProvider>(context, listen: false);
+        authProv.logout(context);
+        Navigator.pushNamedAndRemoveUntil(context, loginRoute, (route) => false);
+        showSnackBar(context, _response.message);
+        throw (_response.message);
+      }
+    } catch (e) {
+      debugPrint('Error in getTodayAttendanceProv: $e');
+    }
+    return null;
+  }
+
   Future<Res.Response?> createAttandance(BuildContext context, AttendanceModel attendanceModel)async{
     
     try {
       final body = { ...attendanceModel.toJson()};
       final jsonString = jsonEncode(body);
-      print('jsonString create attendance: ${jsonString}');
       final response = await Api.postCreateAttendance(jsonString);
       if (response == null || response.isEmpty) {
           return null;

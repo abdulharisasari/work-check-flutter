@@ -25,7 +25,6 @@ class BannerWidget extends StatelessWidget {
       height: height,
       child: Stack(
         children: [
-          // background banner
           Container(
             height: innerHeight,
             width: double.infinity,
@@ -37,8 +36,6 @@ class BannerWidget extends StatelessWidget {
               ),
             ),
           ),
-
-          // back button + title
           Positioned(
             top: 70,
             left: 10,
@@ -65,12 +62,10 @@ class BannerWidget extends StatelessWidget {
                     color: Color(pureWhiteColor),
                   ),
                 ),
-                const SizedBox(width: 48), // biar title tetap center
               ],
             ),
           ),
 
-          // search bar (opsional)
           if (searchWidget != null)
             Positioned(
               top: 120,

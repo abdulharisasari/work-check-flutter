@@ -1,7 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter_image_compress/flutter_image_compress.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:image/image.dart' as img;
 
 import 'package:flutter/material.dart';
@@ -90,52 +88,14 @@ class Utils {
     await storage.delete(key: 'refreshtoken');
     await storage.delete(key: 'grant');
   }
-  static Future<String> imageFileToBase64(File file, {int maxWidth = 500, int quality = 70}) async {
-    try {
-      // Step 1: Read image bytes
-      final bytes = await file.readAsBytes();
-      img.Image? originalImage = img.decodeImage(bytes);
-
-      if (originalImage == null) {
-        throw Exception('Failed to decode image');
-      }
-
-      // Step 2: Resize image
-      final resizedImage = img.copyResize(originalImage, width: maxWidth);
-
-      // Step 3: Encode to JPEG with quality
-      final jpgBytes = img.encodeJpg(resizedImage, quality: quality);
-
-      // Step 4: Optional further compress with flutter_image_compress
-      final dir = await getTemporaryDirectory();
-      final tempPath = '${dir.path}/temp.jpg';
-      final compressedFile = await FlutterImageCompress.compressAndGetFile(
-        tempPath,
-        tempPath,
-        minWidth: maxWidth,
-        quality: quality,
-        format: CompressFormat.jpeg,
-      );
-
-      final finalBytes = compressedFile != null ? await compressedFile.readAsBytes() : jpgBytes;
-
-      // Step 5: Convert to Base64
-      return base64Encode(finalBytes);
-    } catch (e) {
-      print('Utils.imageFileToBase64 error: $e');
-      return '';
-    }
-  }
-
-  /// Convenience method if you have XFile from camera
-  static Future<String> xFileToBase64(XFile xfile, {int maxWidth = 500, int quality = 70}) async {
-    final file = File(xfile.path);
-    return imageFileToBase64(file, maxWidth: maxWidth, quality: quality);
-  }
   
-  static Future<String> convertImageToBase64(String filePath) async {
+  static  Future<String> convertImageToSmallBase64(String filePath) async {
     final bytes = await File(filePath).readAsBytes();
-    return "data:image/jpeg;base64," + base64Encode(bytes);
+    img.Image? image = img.decodeImage(bytes);
+    if (image == null) return '';
+    final resized = img.copyResize(image, width: 400);
+    final jpg = img.encodeJpg(resized, quality: 30);
+    return base64Encode(jpg);
   }
 }
 

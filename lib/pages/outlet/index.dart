@@ -89,6 +89,7 @@ class _OutletPageState extends State<OutletPage> {
                             subtitle1: "${outlet.codeOutlet ?? "-"}",
                             subtitle2: "${outlet.address ?? "-"}",
                             imageUrl: "${outlet.codeOutlet ?? "-"}",
+                            detail: true,
                             onTap: () {
                                Navigator.pushNamed(context, detailOutletRoute, arguments: outlet);
                             },

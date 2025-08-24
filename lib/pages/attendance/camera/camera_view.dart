@@ -15,15 +15,7 @@ class CameraView extends StatefulWidget {
   final CameraLensDirection initialDirection;
   final void Function(CameraController controller) onCameraControllerReady;
 
-  const CameraView({
-    Key? key,
-    required this.title,
-    required this.onImage,
-    required this.initialDirection,
-    this.customPaint,
-    this.text,
-    required this.onCameraControllerReady,
-  }) : super(key: key);
+  const CameraView({Key? key, required this.title, required this.onImage, required this.initialDirection, this.customPaint, this.text, required this.onCameraControllerReady}) : super(key: key);
 
   @override
   State<CameraView> createState() => _CameraViewState();
@@ -57,12 +49,7 @@ class _CameraViewState extends State<CameraView> {
 
   Future _startLive() async {
     final camera = cameras[_cameraIndex];
-    _controller = CameraController(
-      camera,
-      ResolutionPreset.high,
-      enableAudio: false,
-    );
-
+    _controller = CameraController(camera, ResolutionPreset.high, enableAudio: false);
     _controller?.initialize().then((_) {
       if (!mounted) {
         return;
@@ -76,9 +63,7 @@ class _CameraViewState extends State<CameraView> {
         minZoomLevel = value;
       });
       _controller?.startImageStream(_processCameraImage);
-
       widget.onCameraControllerReady(_controller!);
-    
       setState(() {});
     });
   }
@@ -89,33 +74,21 @@ class _CameraViewState extends State<CameraView> {
       allBytes.putUint8List(plane.bytes);
     }
     final bytes = allBytes.done().buffer.asUint8List();
-    final Size imageSize = Size(
-      image.width.toDouble(),
-      image.height.toDouble(),
-    );
+    final Size imageSize = Size(image.width.toDouble(), image.height.toDouble());
     final camera = cameras[_cameraIndex];
     final imageRotation = InputImageRotationValue.fromRawValue(camera.sensorOrientation) ?? InputImageRotation.rotation0deg;
     final inputImageFormat = InputImageFormatValue.fromRawValue(image.format.raw) ?? InputImageFormat.nv21;
     final planeData = image.planes.map((final Plane plane) {
       return InputImagePlaneMetadata(bytesPerRow: plane.bytesPerRow, height: plane.height, width: plane.width);
     }).toList();
-    final inputImageData = InputImageData(
-      size: imageSize,
-      imageRotation: imageRotation,
-      inputImageFormat: inputImageFormat,
-      planeData: planeData,
-    );
-    final inputImage = InputImage.fromBytes(
-      bytes: bytes,
-      inputImageData: inputImageData,
-    );
+    final inputImageData = InputImageData(size: imageSize, imageRotation: imageRotation, inputImageFormat: inputImageFormat, planeData: planeData);
+    final inputImage = InputImage.fromBytes(bytes: bytes, inputImageData: inputImageData);
     widget.onImage(inputImage);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-     
       body: _liveBody(),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
@@ -129,25 +102,17 @@ class _CameraViewState extends State<CameraView> {
     return Stack(
       fit: StackFit.expand,
       children: [
-        // Fullscreen camera
         FittedBox(
-          fit: BoxFit.cover, // pastikan layar penuh tanpa black bars
+          fit: BoxFit.cover, 
           alignment: Alignment.center,
           child: SizedBox(
-            width: _controller!.value.previewSize!.height, // note: kamera rotated
+            width: _controller!.value.previewSize!.height, 
             height: _controller!.value.previewSize!.width,
             child: CameraPreview(_controller!),
           ),
         ),
-
-        // Custom paint overlay
         if (widget.customPaint != null) widget.customPaint!,
-
-        // Contoh posisi tombol atau slider zoom (opsional)
-        if (_chagingCameraLens)
-          const Center(
-            child: Text("Changing camera lens", style: TextStyle(color: Colors.white)),
-          ),
+        if (_chagingCameraLens) const Center(child: Text("Changing camera lens", style: TextStyle(color: Colors.white))),
       ],
     );
   }

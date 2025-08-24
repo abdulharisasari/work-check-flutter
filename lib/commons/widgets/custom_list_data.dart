@@ -3,30 +3,32 @@ import 'package:workcheckapp/services/assets.dart';
 import 'package:workcheckapp/services/themes.dart';
 
 class CustomListItem extends StatelessWidget {
-  final String title, labelTitle;
-  final String subtitle1, labelSubtitle1;
-  final String subtitle2, labelSubtitle2;
+  final String title;
+  final String? subtitle1, labelSubtitle1, labelTitle;
+  final String? subtitle2, labelSubtitle2;
   final String imageUrl;
   final String? barcode;
   final bool selectable;
   final bool isSelected;
   final VoidCallback? onTap;
   final ValueChanged<bool?>? onSelectedChanged;
+  final bool? detail;
 
   const CustomListItem({
     Key? key,
     required this.title,
-    required this.labelTitle,
+    this.labelTitle,
     this.subtitle1 = "",
-    required this.labelSubtitle1,
+    this.labelSubtitle1,
     this.subtitle2 = "",
-    required this.labelSubtitle2,
+    this.labelSubtitle2,
     this.imageUrl = "",
     this.barcode,
     this.selectable = false,
     this.isSelected = false,
     this.onTap,
     this.onSelectedChanged,
+    this.detail
   }) : super(key: key);
 
   List<bool> _encodeBarcode(String code) {
@@ -101,10 +103,10 @@ class CustomListItem extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                   child: Image.network(
                     imageUrl,
-                    width: 70,
-                    height: 70,
+                    width: 50,
+                    height: 50,
                     fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.store, size: 40),
+                    errorBuilder: (context, error, stackTrace) => Image.asset(illustrationOutlet,height: 50,),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -117,7 +119,7 @@ class CustomListItem extends StatelessWidget {
                           Container(
                             width: 50,
                             child: Text(
-                              labelTitle,
+                              labelTitle??'',
                               style: TextStyle(
                                 fontSize: 12,
                                 color: Color(darkGreyColor),
@@ -145,30 +147,53 @@ class CustomListItem extends StatelessWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                if (labelSubtitle1.isNotEmpty)
                                   Text(
-                                    labelSubtitle1,
+                                    labelSubtitle1??'',
                                     style: TextStyle(fontSize: 11, color: Color(darkGreyColor)),
                                   ),
-                                if (labelSubtitle2.isNotEmpty)
-                                  Text(
-                                    labelSubtitle2,
-                                    style: TextStyle(fontSize: 11, color: Color(darkGreyColor)),
-                                  ),
+                                
                               ],
                             ),
                           ),
                           Container(
-                            width: 140,
+                            width: 110,
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.start,
                               children: [
-                                if (subtitle1.isNotEmpty)
+                                if (subtitle1!.isNotEmpty)
                                   Text(
                                     ": $subtitle1",
                                     style: TextStyle(fontSize: 11, color: Color(darkGreyColor)),
                                   ),
-                                if (subtitle2.isNotEmpty)
+                                
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Container(
+                            width: 50,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  labelSubtitle2 ?? '',
+                                  style: TextStyle(fontSize: 11, color: Color(darkGreyColor)),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            width: 110,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              children: [
+                                
+                                if (subtitle2!.isNotEmpty)
                                   Text(
                                     ": $subtitle2",
                                     overflow: TextOverflow.ellipsis,
@@ -182,46 +207,48 @@ class CustomListItem extends StatelessWidget {
                     ],
                   ),
                 ),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Row(
-                      children: [
-                        if (barcode != null && barcode!.isNotEmpty)
-                          Container(
-                            height: 50,
-                            alignment: Alignment.center,
-                            child: GestureDetector(
-                              onTap: () => _showBarcodePopup(context),
-                              child: Image.asset(icBarcode, height: 27,width: 30,fit: BoxFit.cover,)
-                              
-                            ),
-                          ),
-                        const SizedBox(width: 12),
-                        GestureDetector(
-                          onTap: () {
-                            if (onSelectedChanged != null) {
-                              onSelectedChanged!(!isSelected);
-                            }
-                          },
-                          child: Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(
-                              color: isSelected ? Color(mintGreenColor) : Colors.transparent,
-                              border: Border.all(
-                                color: isSelected ? Color(mintGreenColor) : Colors.grey,
-                                width: 2,
+                Container(
+                  child: detail != null? Icon(Icons.chevron_right,size: 40) :Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Row(
+                        children: [
+                          if (barcode != null && barcode!.isNotEmpty)
+                            Container(
+                              height: 50,
+                              width: 40,
+                              alignment: Alignment.center,
+                              child: GestureDetector(
+                                onTap: () => _showBarcodePopup(context),
+                                child: _buildBarcodeWidget(barcode!, widthPerUnit: 2, height: 27),
                               ),
-                              borderRadius: BorderRadius.circular(6),
                             ),
-                            child: isSelected ? const Icon(Icons.check, color: Colors.white, size: 20) : null,
+                          const SizedBox(width: 12),
+                          GestureDetector(
+                            onTap: () {
+                              if (onSelectedChanged != null) {
+                                onSelectedChanged!(!isSelected);
+                              }
+                            },
+                            child: Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: isSelected ? Color(mintGreenColor) : Colors.transparent,
+                                border: Border.all(
+                                  color: isSelected ? Color(mintGreenColor) : Colors.grey,
+                                  width: 2,
+                                ),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: isSelected ? const Icon(Icons.check, color: Colors.white, size: 20) : null,
+                            ),
                           ),
-                        ),
-                      ],
-                    )
-                  ],
+                        ],
+                      )
+                    ],
+                  ),
                 ),
               ],
             ),

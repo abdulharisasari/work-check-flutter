@@ -19,7 +19,7 @@ class FaceDetectorPainter extends CustomPainter {
     this.guideBox,
     this.onFaceInsideGuide,
   ) {
-    // _loadGreenImage(); // load gambar hijau saat dibuat
+    // _loadGreenImage();
   }
 
   void _loadGreenImage() async {
@@ -44,10 +44,9 @@ class FaceDetectorPainter extends CustomPainter {
         translateY(face.boundingBox.bottom, rotation, size, absoluteImageSize),
       );
 
-      // jika wajah sepenuhnya dalam guide box
       if (guideBox.contains(rect.topLeft) && guideBox.contains(rect.bottomRight)) {
         faceInsideGuide = true;
-        // gambar gambar hijau sesuai ukuran kotak wajah
+
         if (_greenImage != null) {
           canvas.drawImageRect(
             _greenImage!,
@@ -57,7 +56,6 @@ class FaceDetectorPainter extends CustomPainter {
           );
         }
       } else {
-        // tetap tampil kotak merah untuk warning
         final Paint warningPaint = Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = 5.0

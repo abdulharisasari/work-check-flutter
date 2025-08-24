@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import 'package:workcheckapp/commons/widgets/custom_button.dart';
 import 'package:workcheckapp/commons/widgets/custom_dialog.dart';
 import 'package:workcheckapp/commons/widgets/custom_textfield.dart';
 import 'package:workcheckapp/models/attendance_model.dart';
+import 'package:workcheckapp/models/user_model.dart';
 import 'package:workcheckapp/providers/attandance_provider.dart';
+import 'package:workcheckapp/providers/auth_provider.dart';
+import 'package:workcheckapp/providers/user_provider.dart';
 import 'package:workcheckapp/routers/constant_routers.dart';
 import 'package:workcheckapp/services/assets.dart';
 import 'package:workcheckapp/services/snack_bar.dart';
@@ -13,19 +17,25 @@ import 'package:workcheckapp/services/themes.dart';
 import 'package:workcheckapp/services/utils.dart';
 
 class AttendancePage extends StatefulWidget {
-  const AttendancePage({Key? key}) : super(key: key);
+  final AttendanceModel? attendanceModel;
+  const AttendancePage({Key? key, this.attendanceModel}) : super(key: key);
 
   @override
   State<AttendancePage> createState() => _AttendancePageState();
 }
 
 class _AttendancePageState extends State<AttendancePage> {
- List<AttendanceModel> listAttendance = [];
-
- String? selectedValue; 
- String? selectedHari;
- bool _isAttandence = true;
- bool _isLoading = false;
+  final TextEditingController _dateTC = TextEditingController();
+  final TextEditingController _notesTC = TextEditingController();
+  List<AttendanceModel> listAttendance = [];
+  AttendanceModel attendanceModel = AttendanceModel();
+  UserModel userModel = UserModel();
+  String locationText = '';
+  DateTime? timestamp;
+  String? selectedLeave;
+  String? selectedHari;
+  bool _isAttandence = true;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -34,43 +44,149 @@ class _AttendancePageState extends State<AttendancePage> {
   }
 
   void _init() async {
+    await _getMe();
+    await _checkLocationPermission();
     await _getHeaderAttandance();
+    await _getLocationAndTime();
+  }
+  
+  Future<void> _getMe() async {
+    final userProv = Provider.of<UserProvider>(context, listen: false);
+    try {
+      final user = await userProv.getMe(context);
+      if (user != null) {
+      setState(() {
+          userModel = user;
+        });  
+      }
+    } catch (e) {
+     debugPrint("catch on _getMe :$e");
+    }
   }
 
-  Future<void> _getHeaderAttandance() async{
+  Future<void> _getHeaderAttandance() async {
     setState(() {
       _isLoading = true;
     });
     listAttendance.clear();
-    final attandanceProv = await  Provider.of<AttandanceProvider>(context, listen: false);
+    final attandanceProv = await Provider.of<AttandanceProvider>(context, listen: false);
     try {
       final _attandanceState = await attandanceProv.getHeaderAttendance(context);
-      if(_attandanceState != null){
+      final _attandanceToday = await attandanceProv.getTodayAttendance(context);
+      if (_attandanceState != null && _attandanceToday != null) {
         setState(() {
           listAttendance = _attandanceState;
+          attendanceModel = _attandanceToday;
         });
       }
     } catch (e) {
       debugPrint('Error in getHeaderAttandance: $e');
-    }finally{
+    } finally {
       setState(() {
         _isLoading = false;
       });
     }
   }
 
+  Future<void> createAttandance() async {
+    final attandanceProv = Provider.of<AttandanceProvider>(context, listen: false);
+    final now = DateTime.now();
+    if (_dateTC.text.isEmpty || _notesTC.text.isEmpty) {
+      showSnackBar(context,"Mohon isi ${_dateTC.text.isEmpty ? "Tanggal Izin" : _notesTC.text.isEmpty ? "Notes" : selectedHari == null ? "Waktu izin" : selectedLeave == null ? "Jenis Izin" : selectedHari == null ? "Waktu Izin" : "Semua"}");
+      return;
+    }
+    final attendanceModel = AttendanceModel(
+      leaveType: selectedLeave,
+      time: now.toString().split(' ')[1].split('.')[0],
+      date: _dateTC.text,
+      address: locationText,
+      notes: _notesTC.text,
+      status: 0,
+    );
 
+    try {
+      final response = await attandanceProv.createAttandance(context, attendanceModel);
+      if (response != null) {
+        if (response.code == 200) {
+          Navigator.pushReplacementNamed(context, attendanceRoute);
+        }else if (response.code == 403) {
+          showSnackBar(context, response.message);
+        } else {
+          showSnackBar(context, response.message);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error in createAttandance: $e');
+      showSnackBar(context, 'Gagal mengirim absen. Silakan coba lagi.');
+    }
+  }
 
-  void _showAttendanceDialog()  {
+  Future<void> _getLocationAndTime() async {
+    setState(() {});
+    try {
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Izin lokasi ditolak')),
+        );
+        return;
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      final placemarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+        localeIdentifier: "id_ID",
+      );
+
+      String loc = "Tidak diketahui";
+      if (placemarks.isNotEmpty) {
+        final place = placemarks.first;
+        loc = "${place.subLocality ?? ''}, ${place.locality ?? ''}, ${place.administrativeArea ?? ''}";
+      }
+
+      DateTime now = DateTime.now();
+
+      setState(() {
+        locationText = loc;
+        timestamp = now;
+      });
+    } catch (e) {
+      print('Error mendapatkan lokasi: $e');
+      setState(() {
+        locationText = 'Error mendapatkan lokasi';
+        timestamp = DateTime.now();
+      });
+    }
+  }
+
+  void _showAttendanceDialog() {
     showDialog(
       context: context,
       builder: (context) => CustomDialog(
         title: "Pilih Kehadiran",
         confirmText: "Masuk Kerja",
         cancelText: "Izin Absen",
-        onConfirm: ()async {
-          await _checkLocationPermission();
-          Navigator.pushNamed(context, cameraRoute);
+        onConfirm: () async {
+          final now = DateTime.now();
+          int status;
+          if (now.hour >= 8 && now.hour < 9) {
+            status = 1;
+          } else if (now.hour >= 15) {
+            status = 2;
+          } else {
+            showSnackBar(context, "Belum waktu absen");
+            return;
+          }
+
+          Navigator.pushNamed(context, cameraRoute, arguments: status);
           setState(() {
             _isAttandence = true;
           });
@@ -85,40 +201,43 @@ class _AttendancePageState extends State<AttendancePage> {
     );
   }
 
-
-
-Future<void> _checkLocationPermission() async {
-  bool serviceEnabled;
-  LocationPermission permission;
-  serviceEnabled = await Geolocator.isLocationServiceEnabled();
-  if (!serviceEnabled) {
-    showSnackBar(context, "Layanan lokasi tidak aktif. Silakan aktifkan layanan lokasi.");
-    return;
-  }
-
-  permission = await Geolocator.checkPermission();
-  if (permission == LocationPermission.denied) {
-    permission = await Geolocator.requestPermission();
-    if (permission == LocationPermission.denied) {
-      showSnackBar(context, "Izin lokasi ditolak.");
+  Future<void> _checkLocationPermission() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      showSnackBar(context, "Layanan lokasi tidak aktif. Silakan aktifkan layanan lokasi.");
       return;
     }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        showSnackBar(context, "Izin lokasi ditolak.");
+        return;
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      showSnackBar(context, "Izin lokasi ditolak secara permanen, silakan atur di pengaturan.");
+      return;
+    }
+
+    setState(() {});
   }
 
-  if (permission == LocationPermission.deniedForever) {
-    showSnackBar(context, "Izin lokasi ditolak secara permanen, silakan atur di pengaturan.");
-    return;
-  }
-
-  setState(() {
-  });
-}
-
- @override
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body:_isLoading? Center(child: CircularProgressIndicator()): !_isAttandence? _buildFormLeave(): _buildDashboard()
-    );
+        body: RefreshIndicator(
+          onRefresh: () async{_init();} ,
+          child: _isLoading
+              ? Center(child: CircularProgressIndicator())
+              : !_isAttandence
+                  ? _buildFormLeave()
+                  : _buildDashboard(),
+        ));
   }
 
   Widget _buildFormLeave() {
@@ -130,12 +249,12 @@ Future<void> _checkLocationPermission() async {
               _buildBanner(),
               Positioned(
                 top: 70,
-                left: 25,
+                left: 20,
                 right: 10,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _backTitle(),
+                    _backIzinTitle(),
                     _buttonCamera(),
                   ],
                 ),
@@ -154,63 +273,68 @@ Future<void> _checkLocationPermission() async {
     );
   }
 
-
-  Widget _buildDashboard(){
+  Widget _buildDashboard() {
     return Column(
-        children: [
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              _buildBanner(),
-              Positioned(top: 70, left: 25,right: 0, child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _backTitle(),
-                  _buttonCamera()
-                ],
-              )),
-              Positioned(top: 140, right: 20, left: 20, child: _buildCheckInOut())
-            ],
-          ),
-          SizedBox(height: 5),
-          Expanded(
-            child: Padding(
-              padding: EdgeInsets.all(25),
-              child: Column(
-                children: [
-                  _listAttendence(),
-                  SizedBox(height: 15),
-                  CustomButton(text: "DAFTAR TOKO", onPressed: () {
+      children: [
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            _buildBanner(),
+            Positioned(
+                top: 70,
+                left: 25,
+                right: 0,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _backTitle(),
+                    _buttonCamera()
+                  ],
+                )),
+            Positioned(top: 140, right: 20, left: 20, child: _buildCheckInOut())
+          ],
+        ),
+        SizedBox(height: 5),
+        Expanded(
+          child: Padding(
+            padding: EdgeInsets.all(25),
+            child: Column(
+              children: [
+                _listAttendence(),
+                SizedBox(height: 15),
+                CustomButton(
+                    text: "DAFTAR TOKO",
+                    onPressed: () {
                       Navigator.pushNamed(context, outletRoute);
                     })
-              
-                ],
-              ),
+              ],
             ),
           ),
-
-        ],
-      );
+        ),
+      ],
+    );
   }
 
-
-  Widget _buttonCamera(){
+  Widget _buttonCamera() {
     return InkWell(
       onTap: () => _showAttendanceDialog(),
       child: Container(
-        decoration: BoxDecoration(
-          boxShadow: Utils.shadowCustom(), 
-          borderRadius: BorderRadius.only(topLeft: Radius.circular(8), bottomLeft: Radius.circular(8)), color: Color(tealBreezeColor)
-        ),
-        padding: EdgeInsets.all(2),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Icon(Icons.camera_alt_rounded, size: 36, color: Color(pureWhiteColor),),
-            Text("Absen",style: TextStyle(fontSize: 12, color: Color(pureWhiteColor)),),
-          ],
-        )
-      ),
+          decoration: BoxDecoration(boxShadow: Utils.shadowCustom(), borderRadius: BorderRadius.only(topLeft: Radius.circular(8), bottomLeft: Radius.circular(8)), color: Color(tealBreezeColor)),
+          padding: EdgeInsets.all(2),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.camera_alt_rounded,
+                size: 36,
+                color: Color(pureWhiteColor),
+              ),
+              Text(
+                "Absen",
+                style: TextStyle(fontSize: 12, color: Color(pureWhiteColor)),
+              ),
+            ],
+          )),
     );
   }
 
@@ -221,10 +345,10 @@ Future<void> _checkLocationPermission() async {
         height: 180,
         width: double.infinity,
         decoration: BoxDecoration(
-          color: Color(primaryColor), 
+          color: Color(primaryColor),
           image: DecorationImage(
             image: AssetImage(backgroundBannerPng),
-            fit: BoxFit.contain, 
+            fit: BoxFit.contain,
           ),
         ),
       ),
@@ -248,15 +372,15 @@ Future<void> _checkLocationPermission() async {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text("Masuk Kerja", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-              Text("08.00", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w400)),
+              Text("${attendanceModel.timeCheckIn ?? "--:--"}", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w400)),
             ],
           ),
           Container(height: 75, width: 2, color: Colors.grey),
           Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text("Masuk Kerja", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-              Text("08.00", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w400)),
+              Text("Pulang Kerja", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+              Text(" ${attendanceModel.timeCheckOut ?? "--:--"}", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w400)),
             ],
           ),
         ],
@@ -266,7 +390,7 @@ Future<void> _checkLocationPermission() async {
 
   Widget _buildFieldLeave() {
     return Container(
-      width: double.infinity, 
+      width: double.infinity,
       decoration: BoxDecoration(
         color: Color(pureWhiteColor),
         borderRadius: BorderRadius.circular(16),
@@ -277,15 +401,28 @@ Future<void> _checkLocationPermission() async {
         children: [
           Text("Permohonan Izin Absen", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
           SizedBox(height: 20),
-          CustomDateField(label: 'Tanggal Izin', hintText: "dd/mm/yy"),
+          CustomDateField(
+            label: 'Tanggal Izin',
+            hintText: "dd/mm/yy",
+            controller: _dateTC,
+          ),
           SizedBox(height: 20),
           _selectLeave(),
           SizedBox(height: 20),
-          _selectDay(),
-          SizedBox(height: 20),
-          CustomTextField(label: 'Notes', maxLines: 3, isTextarea: true),
-          SizedBox(height: 40,),
-          CustomButton(text: "KIRIM PERMOHONAN", onPressed: (){}),
+          CustomTextField(
+            label: 'Notes',
+            maxLines: 3,
+            isTextarea: true,
+            controller: _notesTC,
+          ),
+          SizedBox(
+            height: 40,
+          ),
+          CustomButton(
+              text: "KIRIM PERMOHONAN",
+              onPressed: () {
+                createAttandance();
+              }),
           SizedBox(height: 20),
         ],
       ),
@@ -308,17 +445,16 @@ Future<void> _checkLocationPermission() async {
           padding: EdgeInsets.symmetric(horizontal: 10),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
-              value: selectedValue,
+              value: selectedLeave,
               elevation: 4,
               hint: Text("Pilih jenis izin"),
               items: [
-                DropdownMenuItem(value: "A", child: Text("Kategori A")),
-                DropdownMenuItem(value: "B", child: Text("Kategori B")),
-                DropdownMenuItem(value: "C", child: Text("Kategori C")),
+                DropdownMenuItem(value: "Sakit", child: Text("Sakit")),
+                DropdownMenuItem(value: "Cuti", child: Text("Cuti")),
               ],
               onChanged: (value) {
                 setState(() {
-                  selectedValue = value;
+                  selectedLeave = value;
                 });
               },
               isExpanded: true,
@@ -328,8 +464,7 @@ Future<void> _checkLocationPermission() async {
       ],
     );
   }
-  
-  
+
   Widget _selectDay() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -354,6 +489,7 @@ Future<void> _checkLocationPermission() async {
                       setState(() {
                         selectedHari = value;
                       });
+                      print("Select hari : $selectedHari");
                     },
                   ),
                 ),
@@ -388,38 +524,123 @@ Future<void> _checkLocationPermission() async {
     );
   }
 
-
-  Widget _backTitle() {
+ Widget _backTitle() {
     return Container(
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text("Absensi",
-            style: TextStyle(
-              fontSize: 24.0,
-              fontWeight: FontWeight.w600,
-              color: Color(pureWhiteColor)
-            ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              PopupMenuButton<String>(
+                padding: EdgeInsets.zero,
+                onSelected: (value) {
+                  if (value == 'profile') {
+                    
+                  } else if (value == 'logout') {
+                    final authProv = Provider.of<AuthProvider>(context, listen: false);
+                    authProv.logout(context);
+                    Navigator.pushNamedAndRemoveUntil(context, loginRoute, (route) => false);
+                  }
+                },
+                itemBuilder: (context) => [
+                   PopupMenuItem(
+                    value: 'profile',
+                    child: Row(
+                      children: [
+                        Image.asset(icPerson, height: 15,width: 15, color: Colors.black),
+                        SizedBox(width: 10),
+                        Text("Profil"),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'logout',
+                    child: Row(
+                      children: [
+                        Icon(Icons.logout, size: 15),
+                        SizedBox(width: 10),
+                        Text("Logout"),
+                      ],
+                    ),
+                  ),
+                ],
+                child: Text(
+                  "Absensi",
+                  style: TextStyle(
+                    fontSize: 24.0,
+                    fontWeight: FontWeight.w600,
+                    color: Color(pureWhiteColor),
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  Image.asset(icPerson, height: 11, color: Color(pureWhiteColor)),
+                  const SizedBox(width: 5),
+                  Text(
+                    "${userModel.name}",
+                    style: TextStyle(
+                      fontSize: 11.0,
+                      fontWeight: FontWeight.w600,
+                      color: Color(pureWhiteColor),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _listAttendence() {
-    return Expanded(
-      child:listAttendance.isEmpty?Center(child: Text("No Data Available")): ListView.builder(
-        padding: EdgeInsets.zero,
-        itemCount: listAttendance.length,
-        itemBuilder: (context, index) {
-          final attendance = listAttendance[index];
-          return _buildHeaderAttandance(attendance.imgUrl ?? '', attendance.time ?? '', attendance.date ?? '', attendance.address ?? '', attendance.status!);
-        },
+
+  Widget _backIzinTitle() {
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _isAttandence = true;
+        });
+      },
+      child: Container(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Container(
+              width: 24,
+              child: Icon(
+                Icons.chevron_left,
+                size: 24.0,
+                color: Color(pureWhiteColor),
+              ),
+            ),
+            Text(
+              "From Izin",
+              style: TextStyle(fontSize: 24.0, fontWeight: FontWeight.w600, color: Color(pureWhiteColor)),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildHeaderAttandance(String pathImg, String hours, String date, String address, int statusId) {
+  Widget _listAttendence() {
+    return Expanded(
+      child: listAttendance.isEmpty
+          ? Center(child: Text("No Data Available"))
+          : ListView.builder(
+              padding: EdgeInsets.zero,
+              itemCount: listAttendance.length,
+              itemBuilder: (context, index) {
+                final attendance = listAttendance[index];
+                return _buildHeaderAttandance(attendance);
+              },
+            ),
+    );
+  }
+
+  Widget _buildHeaderAttandance(AttendanceModel attendance) {
     return Padding(
       padding: EdgeInsets.only(bottom: 20),
       child: Container(
@@ -433,11 +654,11 @@ Future<void> _checkLocationPermission() async {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(
-                child: statusId == 1
+                child: attendance.status == 1 || attendance.status == 2
                     ? ClipRRect(
-                        borderRadius: BorderRadius.circular(8), // rounded 8
+                        borderRadius: BorderRadius.circular(8), 
                         child: Image.network(
-                          pathImg,
+                          attendance.imgUrl ?? '',
                           width: 70,
                           height: 70,
                           fit: BoxFit.cover,
@@ -451,22 +672,21 @@ Future<void> _checkLocationPermission() async {
                         ),
                       )
                     : Container(
-               height: 70,
-               width: 70,
-               decoration: BoxDecoration(borderRadius: BorderRadius.all(Radius.circular(8)), color: statusId == 0 ? Color(coralFlameColor) : Color(mintGreenColor)),
-               alignment: Alignment.center,
-               child: Column(
-                 mainAxisAlignment: MainAxisAlignment.center,
-                 children: [
-                   
-                   Image.asset(statusId == 0 ? icSick : icLeave, height: 28, width: 28),
-                   Text(
-                     "${statusId == 0 ? "Sakit" : "Izin"}",
-                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(pureWhiteColor)),
-                   ),
-                 ],
-               ),
-             )),
+                        height: 70,
+                        width: 70,
+                        decoration: BoxDecoration(borderRadius: BorderRadius.all(Radius.circular(8)), color: attendance.leaveType == "Sakit" ? Color(coralFlameColor) : Color(mintGreenColor)),
+                        alignment: Alignment.center,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Image.asset(attendance.leaveType == "Sakit" ? icSick : icLeave, height: 28, width: 28),
+                            Text(
+                              "${attendance.leaveType}",
+                              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(pureWhiteColor)),
+                            ),
+                          ],
+                        ),
+                      )),
             SizedBox(width: 10),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -479,7 +699,8 @@ Future<void> _checkLocationPermission() async {
                     children: [
                       _textCustom("Jam"),
                       _textCustom("Hari/Tgl"),
-                      _textCustom("Alamat")
+                      _textCustom("Alamat"),
+                      _textCustom("Status")
                     ],
                   ),
                 ),
@@ -491,19 +712,21 @@ Future<void> _checkLocationPermission() async {
                     children: [
                       _textCustom(":"),
                       _textCustom(":"),
+                      _textCustom(":"),
                       _textCustom(":")
                     ],
                   ),
                 ),
                 Container(
-                   width: 170,
+                  width: 170,
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _textCustom("$hours"),
-                      _textCustom("$date"),
-                      _textCustom("$address")
+                      _textCustom("${attendance.status == 0 ?attendance.time :attendance.timeCheckIn??attendance.timeCheckOut}"),
+                      _textCustom("${attendance.date}"),
+                      _textCustom("${attendance.address}"),
+                      _textCustom("${attendance.status == 0 ? "${attendance.leaveType}" : attendance.status == 1 ? "Masuk" : "Pulang"}")
                     ],
                   ),
                 ),
@@ -516,6 +739,6 @@ Future<void> _checkLocationPermission() async {
   }
 
   Widget _textCustom(String text) {
-    return Text(text,maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 10, color: Color(darkGreyColor)));
+    return Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 10, color: Color(darkGreyColor)));
   }
 }

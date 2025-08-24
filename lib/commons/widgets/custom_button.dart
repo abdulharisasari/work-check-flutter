@@ -1,18 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:workcheckapp/services/themes.dart';
-
 class CustomButton extends StatelessWidget {
   final String text;
   final Color backgroundColor;
   final Color textColor;
   final double borderRadius;
   final Widget? icon;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
   final double height;
   final bool isOutline;
   final Color? borderColor;
   final double? sizeText;
-
+  final bool isEnabled;
 
   const CustomButton({
     Key? key,
@@ -25,44 +24,55 @@ class CustomButton extends StatelessWidget {
     this.height = 50,
     this.isOutline = false,
     this.borderColor,
-    this.sizeText = 18
+    this.sizeText = 18,
+    this.isEnabled = true, // ✅ default aktif
   }) : super(key: key);
-@override
-Widget build(BuildContext context) {
-  return SizedBox(
-    width: double.infinity,
-    height: height,
-    child: ElevatedButton(
-      style: ElevatedButton.styleFrom(
-        padding: EdgeInsets.zero,
-        backgroundColor: isOutline ? Colors.white : backgroundColor,
-        foregroundColor: textColor,
-        elevation: 3, 
-        side:  BorderSide(color: borderColor ?? backgroundColor, width: 1),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(borderRadius),
-        ),
-        shadowColor: Colors.grey.withOpacity(0.5), 
-      ),
-      onPressed: onPressed,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            text,
-            style: TextStyle(
-              color: textColor,
-              fontWeight: FontWeight.bold,
-              fontSize: sizeText,
-            ),
+
+  @override
+  Widget build(BuildContext context) {
+    final effectiveBackground = isEnabled ? (isOutline ? Colors.white : backgroundColor) : Colors.grey.shade400;
+
+    final effectiveTextColor = isEnabled ? textColor : Colors.grey.shade200;
+
+    return SizedBox(
+      width: double.infinity,
+      height: height,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          padding: EdgeInsets.zero,
+          backgroundColor: effectiveBackground,
+          foregroundColor: effectiveTextColor,
+          elevation: isEnabled ? 3 : 0,
+          side: BorderSide(color: borderColor ?? backgroundColor, width: 1),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(borderRadius),
           ),
-        ],
+          shadowColor: Colors.grey.withOpacity(0.5),
+        ),
+        onPressed: isEnabled ? onPressed : null, // ✅ disable klik
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              icon!,
+              const SizedBox(width: 8),
+            ],
+            Text(
+              text,
+              style: TextStyle(
+                color: effectiveTextColor,
+                fontWeight: FontWeight.bold,
+                fontSize: sizeText,
+              ),
+            ),
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
-}
+
 
 
 

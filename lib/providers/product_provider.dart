@@ -39,19 +39,19 @@ class ProductProvider extends ChangeNotifier {
   }
 
 
-  Future<Res.Response?> createProductSelect(BuildContext context, List<ProductModel> listProduct) async {
+  Future<Res.Response?> createProductSelect(BuildContext context, List<ProductModel> listProduct, id) async {
     try {
-    final body = {
+      final body = {
         "products": listProduct.map((p) => {
           "id": p.id,
-          "available": p.availableStock, // confirm backend key
+          "available": p.availableStock, 
         }).toList(),
       };
 
       final jsonString = jsonEncode(body);
       print('jsonString create attendance: $jsonString');
 
-      final response = await Api.postProductSelect(jsonString);
+      final response = await Api.postProductSelect(jsonString, id);
       if (response == null || response.isEmpty) {
         return null;
       }

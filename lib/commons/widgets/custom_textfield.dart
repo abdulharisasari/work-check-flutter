@@ -7,10 +7,11 @@ class CustomTextField extends StatelessWidget {
   final bool obscureText;
   final TextEditingController? controller;
   final FocusNode? focusNode;
-  final int maxLines; // untuk textarea
+  final int maxLines; 
   final bool isTextarea; 
   final String? hintext;
   final int? hintextColor;
+  final bool? keyBoardNumber;
   final Function(String)? onChanged;
 
   const CustomTextField({
@@ -25,6 +26,7 @@ class CustomTextField extends StatelessWidget {
     this.hintext,
     this.hintextColor,
     this.onChanged,
+    this.keyBoardNumber
   }) : super(key: key);
 
   @override
@@ -60,6 +62,7 @@ class CustomTextField extends StatelessWidget {
             minLines: isTextarea ? 3 : 1,
             onTapOutside: (event) => focusNode?.unfocus(),
             onChanged: onChanged,
+            keyboardType:keyBoardNumber != null ? TextInputType.number:TextInputType.name,
             style: TextStyle(color: Colors.black),
             decoration: InputDecoration(
               filled: true,

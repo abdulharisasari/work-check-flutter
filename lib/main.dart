@@ -7,6 +7,7 @@ import 'package:workcheckapp/providers/attandance_provider.dart';
 import 'package:workcheckapp/providers/auth_provider.dart';
 import 'package:workcheckapp/providers/outlet_provider.dart';
 import 'package:workcheckapp/providers/product_provider.dart';
+import 'package:workcheckapp/providers/promo_provider.dart';
 import 'package:workcheckapp/providers/user_provider.dart';
 import 'package:workcheckapp/routers/constant_routers.dart';
 import 'package:workcheckapp/routers/routers.dart';
@@ -32,6 +33,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AttandanceProvider()),
         ChangeNotifierProvider(create: (_) => OutletProvider()),
         ChangeNotifierProvider(create: (_) => ProductProvider()),
+        ChangeNotifierProvider(create: (_) => PromoProvider())
         ],
       child: MaterialApp(
         title: 'Work Check',

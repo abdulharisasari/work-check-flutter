@@ -8,12 +8,14 @@ import 'package:workcheckapp/commons/widgets/custom_list_data.dart';
 import 'package:workcheckapp/commons/widgets/custom_textfield.dart';
 import 'package:workcheckapp/models/outlet_model.dart';
 import 'package:workcheckapp/models/product_model.dart';
-import 'package:workcheckapp/providers/auth_provider.dart';
+import 'package:workcheckapp/models/promo_model.dart';
 import 'package:workcheckapp/providers/product_provider.dart';
-import 'package:workcheckapp/routers/constant_routers.dart';
+import 'package:workcheckapp/providers/promo_provider.dart';
+import 'package:workcheckapp/services/assets.dart';
 import 'package:workcheckapp/services/snack_bar.dart';
 import 'package:workcheckapp/services/themes.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:workcheckapp/services/utils.dart';
 
 class DetailOutletPage extends StatefulWidget {
   final OutletModel outletModel;
@@ -25,12 +27,20 @@ class DetailOutletPage extends StatefulWidget {
 
 class _DetailOutletPageState extends State<DetailOutletPage> {
   final TextEditingController _searchTC = TextEditingController();
+  final TextEditingController _nameProductTC = TextEditingController();
+  final TextEditingController _priceNormalTC = TextEditingController();
+  final TextEditingController _pricePromoTC = TextEditingController();
+  
   final ImagePicker _picker = ImagePicker();
   final Set<int> selectedIndexes = {};
   List<ProductModel> listProduct = [];
+
+  bool _isPromo = false;
+
   File? _imageFile;
-  int selectedIndex = 0;
-  bool _isLoading = false;
+  String? _pathImage;
+
+  int _selectedPageProduct = 0;
 
   @override
   void initState() {
@@ -39,6 +49,13 @@ class _DetailOutletPageState extends State<DetailOutletPage> {
   }
 
   void _init() async {
+    _nameProductTC.clear();
+    _searchTC.clear();
+    _priceNormalTC.clear();
+    _pricePromoTC.clear();
+    _pathImage = null;
+    _imageFile = null;
+    _isPromo = widget.outletModel.promoAvailable == 1? true: false;
     await _getHeaderProduct();
 
     for (int i = 0; i < listProduct.length; i++) {
@@ -48,11 +65,10 @@ class _DetailOutletPageState extends State<DetailOutletPage> {
   }
 
   Future<void> _getHeaderProduct() async {
-    setState(() {
-      _isLoading = true;
-    });
+
     listProduct.clear();
     final productProv = await Provider.of<ProductProvider>(context, listen: false);
+    print("select OutletId : ${widget.outletModel.id}");
     try {
       final _productState = await productProv.getProduct(context, "${widget.outletModel.id}", search: _searchTC.text);
       if (_productState != null) {
@@ -62,22 +78,17 @@ class _DetailOutletPageState extends State<DetailOutletPage> {
       }
     } catch (e) {
       debugPrint('Error in getHeaderAttandance: $e');
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
+    } 
   }
 
   Future<void> _selectedProduct(List<ProductModel> listProduct) async {
     setState(() {
-      _isLoading = true;
     });
     final productProv = await Provider.of<ProductProvider>(context, listen: false);
     try {
-      final response = await productProv.createProductSelect(context, listProduct);
+      final response = await productProv.createProductSelect(context, listProduct,widget.outletModel.id);
       if (response != null && response.code == 200) {
-        showSnackBar(context, response.message);
+        showSnackBar(context, response.message, backgroundColor: Color(mintGreenColor));
       } else{
         showSnackBar(context, "${response?.message}");
       }
@@ -85,7 +96,6 @@ class _DetailOutletPageState extends State<DetailOutletPage> {
       debugPrint('Error in _selectedProduct: $e');
     }return null;
   }
-
 
 
 
@@ -102,6 +112,39 @@ class _DetailOutletPageState extends State<DetailOutletPage> {
     if (pickedFile != null) {
       setState(() {
         _imageFile = File(pickedFile.path);
+        _pathImage = pickedFile.path; 
+      });
+    }
+  }
+
+  Future<void> _addPromo() async{
+    setState(() {
+    });
+     if (_nameProductTC.text.isEmpty || _priceNormalTC.text.isEmpty || _priceNormalTC.text.isEmpty ) {
+      showSnackBar(context, "Harap isi semua kolom");
+      return;
+    }
+    final promoProv = Provider.of<PromoProvider>(context, listen: false);
+    final base64Image = await Utils.convertImageToSmallBase64(_pathImage!);
+    final promoModel = PromoModel(imageUrl: base64Image, nameProduct: _nameProductTC.text, priceNormal: int.tryParse(_priceNormalTC.text), pricePromo: int.tryParse(_pricePromoTC.text));
+    try {
+      final response = await promoProv.createProductPromo(context, promoModel, widget.outletModel.id!);
+      if (response?.code == 200) {
+        showSnackBar(context, response?.message??'', backgroundColor: Color(mintGreenColor));
+         _init();
+         setState(() {
+           _selectedPageProduct = 0;
+         });
+      }else if(response?.code == 400){
+        showSnackBar(context,response?.message??"Gagal nambah Promo");
+      }else{
+        showSnackBar(context,response?.message??"Gagal Nambah Promo" );
+      }
+    } catch (e) {
+      debugPrint("Error in _addPromo : $e");
+      showSnackBar(context, 'Gagal mengirim absen. Silakan coba lagi.');
+    }finally{
+      setState(() {
       });
     }
   }
@@ -109,80 +152,97 @@ class _DetailOutletPageState extends State<DetailOutletPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
-        children: [
-          BannerWidget(
-            title: "Detail Toko",
-            onBack: () => Navigator.pop(context),
-            addWidget: _buildDetailOutlet(),
-          ),
-          Expanded(
-            child: Column(
-              children: [
-                Container(
-                  height: 45,
-                  decoration: BoxDecoration(
-                    color: Color(softGreyColor),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () => setState(() => selectedIndex = 0),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: selectedIndex == 0 ? Color(secondaryColor) : Colors.transparent,
-                              borderRadius: const BorderRadius.only(
-                                topRight: Radius.circular(8),
-                                bottomRight: Radius.circular(8),
-                              ),
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              "Produk",
-                              style: TextStyle(
-                                fontSize: 15,
-                                color: selectedIndex == 0 ? Colors.white : Colors.black,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () => setState(() => selectedIndex = 1),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: selectedIndex == 1 ? Color(secondaryColor) : Colors.transparent,
-                              borderRadius: const BorderRadius.only(
-                                topLeft: Radius.circular(8),
-                                bottomLeft: Radius.circular(8),
-                              ),
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              "Promo",
-                              style: TextStyle(
-                                fontSize: 15,
-                                color: selectedIndex == 1 ? Colors.white : Colors.black,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: selectedIndex == 0 ? _buildProduct() : _buildPromo(),
-                ),
-              ],
+      body: RefreshIndicator(
+        onRefresh: ()async {
+          _init();
+        },
+        child: Column(
+          children: [
+            BannerWidget(
+              title: "Detail Toko",
+              onBack: () => Navigator.pop(context),
+              addWidget: _buildDetailOutlet(),
             ),
-          ),
-        ],
+            Expanded(
+              child: Column(
+                children: [
+                  Container(
+                    height: 45,
+                    decoration: BoxDecoration(
+                      color: Color(softGreyColor),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => setState(() => _selectedPageProduct = 0),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: _selectedPageProduct == 0 ? Color(secondaryColor) : Colors.transparent,
+                                borderRadius: const BorderRadius.only(
+                                  topRight: Radius.circular(8),
+                                  bottomRight: Radius.circular(8),
+                                ),
+                              ),
+                              alignment: Alignment.center,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Image.asset(icProduct, height: 20,color: _selectedPageProduct == 0 ? Colors.white : Color(primaryColor),),
+                                  Text(
+                                    "Produk",
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      color: _selectedPageProduct == 0 ? Colors.white : Color(primaryColor),
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => setState(() { _selectedPageProduct = 1; _init();}),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: _selectedPageProduct == 1 ? Color(secondaryColor) : Colors.transparent,
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(8),
+                                  bottomLeft: Radius.circular(8),
+                                ),
+                              ),
+                              alignment: Alignment.center,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Image.asset(icPromo, height: 20, color: _selectedPageProduct == 1 ? Colors.white : Color(primaryColor),),
+                                  Text(
+                                    "Promo",
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      color: _selectedPageProduct == 1 ? Colors.white : Color(primaryColor),
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: _selectedPageProduct == 0 ? _buildProduct() : _buildPromo(),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -192,7 +252,7 @@ class _DetailOutletPageState extends State<DetailOutletPage> {
       padding: EdgeInsets.all(20),
       child: SingleChildScrollView(
         controller: ScrollController(),
-        child: Column(
+        child:Column(
           children: [
             Stack(
               clipBehavior: Clip.none,
@@ -238,13 +298,13 @@ class _DetailOutletPageState extends State<DetailOutletPage> {
               ],
             ),
             SizedBox(height: 10),
-            CustomTextField(label: "Nama Produk"),
+            CustomTextField(label: "Nama Produk", controller: _nameProductTC),
             SizedBox(height: 10),
-            CustomTextField(label: "Harga Normal"),
+            CustomTextField(label: "Harga Normal", controller: _priceNormalTC, keyBoardNumber: true),
             SizedBox(height: 10),
-            CustomTextField(label: "Harga Promo"),
+            CustomTextField(label: "Harga Promo", controller: _pricePromoTC,keyBoardNumber: true),
             SizedBox(height: 20),
-            CustomButton(text: "TAMBAHKAN PROMO", onPressed: () {})
+            CustomButton(text: "TAMBAHKAN PROMO",isEnabled: _isPromo, onPressed: ()async {await _addPromo();})
           ],
         ),
       ),
@@ -256,7 +316,7 @@ class _DetailOutletPageState extends State<DetailOutletPage> {
       padding: EdgeInsets.symmetric(horizontal: 20, vertical: 20),
       child: Column(
         children: [
-          CustomTextField(label: "", hintext: "Search ...", logo: const Icon(Icons.search_rounded, size: 26, color: Color(tealBreezeColor))),
+          CustomTextField(label: "", hintext: "Search ...",controller: _searchTC,onChanged: (p0) { _getHeaderProduct();},  logo: const Icon(Icons.search_rounded, size: 26, color: Color(tealBreezeColor))),
           Expanded(
             child: ListView.builder(
               itemCount: listProduct.length,
@@ -266,10 +326,9 @@ class _DetailOutletPageState extends State<DetailOutletPage> {
                 return CustomListItem(
                   labelTitle: "Nama",
                   labelSubtitle1: "Harga",
-                  labelSubtitle2: "Promo",
+                  
                   title: "${product.name ?? "-"}",
                   subtitle1: "${product.price ?? "-"}",
-                  subtitle2: "${product.price ?? "-"}",
                   imageUrl: "${product.imgUrl ?? "-"}",
                   barcode: "${product.codeBarcode}",
                   selectable: true,
@@ -291,13 +350,11 @@ class _DetailOutletPageState extends State<DetailOutletPage> {
           CustomButton(
               text: "SIMPAN",
               onPressed: ()async {
-                final selectedProducts = selectedIndexes.map((index) => listProduct[index]).toList();
-                final List<ProductModel> select = selectedProducts.map((e) {
-                  return ProductModel(
-                    id: e.id,
-                    availableStock: e.availableStock,
-                    // add other required fields depending on your model constructor
-                  );
+               final List<ProductModel> select = listProduct.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final product = entry.value;
+                  final isSelected = selectedIndexes.contains(index);
+                  return ProductModel(id: product.id, availableStock: isSelected ? 1 : 0);
                 }).toList();
 
               

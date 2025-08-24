@@ -1,8 +1,8 @@
 class OutletModel {
-  int? id;
+  int? id, promoAvailable;
   String? name, codeOutlet, address, imgUrl;
   
-  OutletModel({this.id, this.name, this.codeOutlet, this.address, this.imgUrl});
+  OutletModel({this.id, this.name, this.codeOutlet, this.address, this.imgUrl, this.promoAvailable});
 
   factory OutletModel.fromJson(Map<String, dynamic>json){
     return OutletModel(
@@ -11,6 +11,7 @@ class OutletModel {
       codeOutlet : json['kode_toko'],
       address : json['alamat'],
       imgUrl : json['image'],
+      promoAvailable: json['promo_available']??0
     );
   }
 
@@ -24,6 +25,7 @@ class OutletModel {
     'kode_toko': codeOutlet,
     'alamat': address,
     'image': imgUrl,
+    'promo_available': promoAvailable
   };
 
 }

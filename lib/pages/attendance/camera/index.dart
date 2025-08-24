@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
@@ -16,11 +15,12 @@ import 'package:workcheckapp/services/utils.dart';
 import 'camera_view.dart';
 import 'face_detector_painter.dart';
 import 'package:workcheckapp/services/assets.dart';
-import 'package:http/http.dart' as http;
+
 
 
 class FaceDetectorPage extends StatefulWidget {
-  const FaceDetectorPage({Key? key}) : super(key: key);
+  final int status;
+  const FaceDetectorPage({Key? key, required this.status}) : super(key: key);
 
   @override
   State<FaceDetectorPage> createState() => _FaceDetectorPageState();
@@ -204,7 +204,6 @@ class _FaceDetectorPageState extends State<FaceDetectorPage> {
     try {
       await _cameraController!.stopImageStream();
 
-      // final image = await _cameraController!.takePicture();
       final image = await _cameraController!.takePicture();
 
       if (!mounted) return;
@@ -215,6 +214,7 @@ class _FaceDetectorPageState extends State<FaceDetectorPage> {
         MaterialPageRoute(
           builder: (_) => DisplayPictureScreen(
             imagePath: image.path,
+            status : widget.status
           ),
         ),
       );
@@ -228,15 +228,15 @@ class _FaceDetectorPageState extends State<FaceDetectorPage> {
 
 class DisplayPictureScreen extends StatefulWidget {
   final String imagePath;
+  final int status;
 
-  const DisplayPictureScreen({super.key, required this.imagePath});
+  const DisplayPictureScreen({super.key, required this.imagePath, required this.status});
 
   @override
   State<DisplayPictureScreen> createState() => _DisplayPictureScreenState();
 }
 
 class _DisplayPictureScreenState extends State<DisplayPictureScreen> {
-  bool _isLoading = false;
   String locationText = 'Memuat lokasi...';
   DateTime? timestamp;
   
@@ -246,34 +246,38 @@ class _DisplayPictureScreenState extends State<DisplayPictureScreen> {
     super.initState();
   }
   
-  Future<String> convertImageToBase64(String filePath) async {
-      final bytes = await File(filePath).readAsBytes();
-      return "data:image/jpeg;base64," + base64Encode(bytes);
-    }
-    
-  Future<void> createAttandance() async {
-    setState(() {
-      _isLoading = true;
-    });
+ 
 
+
+  Future<void> createAttandance() async {
     final attandanceProv = Provider.of<AttandanceProvider>(context, listen: false);
-    final base64Image = await convertImageToBase64(widget.imagePath); // ini sudah ada
+    final base64Image = await Utils.convertImageToSmallBase64(widget.imagePath);
 
     final attendanceModel = AttendanceModel(
       id: 1,
       userId: 1,
-      imgUrl: null, // pakai base64
+      imgUrl: base64Image, 
       date: timestamp.toString().split(' ')[0],
       time: timestamp.toString().split(' ')[1].split('.')[0],
       address: locationText,
-      status: 1,
+      status: widget.status,
     );
+
 
     try {
       final response = await attandanceProv.createAttandance(context, attendanceModel);
       if (response != null) {
         if (response.code == 200) {
-          Navigator.pushReplacementNamed(context, attendanceRoute);
+         Navigator.pushReplacementNamed(
+            context,
+            attendanceRoute,
+            arguments: attendanceModel,
+          );
+
+        }
+        if (response.code == 403) {
+          showSnackBar(context, "Sesi habis silahkan login ulang");
+          Navigator.pushReplacementNamed(context, loginRoute);
         } else {
           showSnackBar(context, response.message);
         }
@@ -281,17 +285,11 @@ class _DisplayPictureScreenState extends State<DisplayPictureScreen> {
     } catch (e) {
       debugPrint('Error in createAttandance: $e');
       showSnackBar(context, 'Gagal mengirim absen. Silakan coba lagi.');
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
+    } 
   }
-
 
   Future<void> _getLocationAndTime() async {
     setState(() {
-      _isLoading = true;
     });
     try {
       LocationPermission permission = await Geolocator.checkPermission();
@@ -333,7 +331,6 @@ class _DisplayPictureScreenState extends State<DisplayPictureScreen> {
       setState(() {
         locationText = 'Error mendapatkan lokasi';
         timestamp = DateTime.now();
-        _isLoading = false;
       });
     }
   }
@@ -341,7 +338,7 @@ class _DisplayPictureScreenState extends State<DisplayPictureScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: !_isLoading?Center(child: CircularProgressIndicator()): Stack(
+      body:  Stack(
         fit: StackFit.expand,
         children: [
           Image.file(File(widget.imagePath), fit: BoxFit.cover),

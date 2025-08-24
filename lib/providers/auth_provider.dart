@@ -40,7 +40,6 @@ class AuthProvider with ChangeNotifier {
             debugPrint("user: ${user?.name}");
             if (user != null) {
                Navigator.pushNamedAndRemoveUntil(context, attendanceRoute, (route) => false) ;
-              // Navigator.maybeOf(context)?.pushNamedAndRemoveUntil(attendanceRoute, (route) => false);
             } else {
               throw "User not found";
             }

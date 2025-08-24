@@ -1,9 +1,9 @@
-import 'dart:io';
+
 
 class AttendanceModel {
   int? id, status, userId;
-  String?  time, date, address, imgUrl, type, leaveType, notes;
-  AttendanceModel({this.id,this.status, this.time, this.date, this.address,this.imgUrl, this.userId, this.type, this.leaveType, this.notes});
+  String?  time, date, address, imgUrl, type, leaveType, notes, timeCheckIn , timeCheckOut;
+  AttendanceModel({this.id,this.status, this.time, this.date, this.address,this.imgUrl, this.userId, this.type, this.leaveType, this.notes, this.timeCheckIn, this.timeCheckOut});
 
   factory AttendanceModel.fromJson(Map<String, dynamic>json){
     return AttendanceModel(
@@ -17,6 +17,8 @@ class AttendanceModel {
       notes: json['notes'],
       date: json['date'],
       time: json['time'],
+      timeCheckIn: json['time_checkin'],
+      timeCheckOut: json['time_checkout']
 
 
     );
@@ -37,6 +39,8 @@ class AttendanceModel {
     'notes': notes,
     'date': date,
     'time': time,
+    'time_checkout': timeCheckOut,
+    'time_checkin':timeCheckIn
     
   };
 
@@ -49,7 +53,7 @@ class CheckinModel {
   final String type;
   final String date;
   final String time;
-  final String? imagePath; // local file path
+  final String? imagePath; 
 
   CheckinModel({
     required this.status,
