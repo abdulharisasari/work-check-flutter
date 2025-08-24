@@ -65,7 +65,7 @@ class _LoginPageState extends State<LoginPage> {
                           Text("Helloo", style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: Color(darkColor))),
                           Text("Selamat datang!", style: TextStyle(fontSize: 13, color: Color(darkColor))),
                           SizedBox(height: 150),
-                          CustomTextField(label: "Email", focusNode: emailFocus, controller: emailController),
+                          CustomTextField(label: "Username", focusNode: emailFocus, controller: emailController),
                           SizedBox(height: 20),
                           CustomTextField(label: "Password", focusNode: passwordFocus, controller: passwordController),
                           SizedBox(height: 10),

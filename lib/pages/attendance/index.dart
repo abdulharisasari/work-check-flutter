@@ -108,6 +108,7 @@ class _AttendancePageState extends State<AttendancePage> {
       final response = await attandanceProv.createAttandance(context, attendanceModel);
       if (response != null) {
         if (response.code == 200) {
+          showSnackBar(context, response.message, backgroundColor: Color(mintGreenColor));
           Navigator.pushReplacementNamed(context, attendanceRoute);
         }else if (response.code == 403) {
           showSnackBar(context, response.message);

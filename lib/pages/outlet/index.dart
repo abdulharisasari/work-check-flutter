@@ -7,6 +7,7 @@ import 'package:workcheckapp/commons/widgets/custom_banner.dart';
 import 'package:workcheckapp/models/outlet_model.dart';
 import 'package:workcheckapp/providers/outlet_provider.dart';
 import 'package:workcheckapp/routers/constant_routers.dart';
+import 'package:workcheckapp/services/assets.dart';
 import 'package:workcheckapp/services/themes.dart';
 
 class OutletPage extends StatefulWidget {
@@ -81,18 +82,34 @@ class _OutletPageState extends State<OutletPage> {
                       final outlet = listOutletModel[index];
                       return Column(
                         children: [
-                          CustomListItem(
-                            labelTitle: "Toko",
-                            labelSubtitle1: "Kode",
-                            labelSubtitle2: "Alamat",
-                            title: "${outlet.name ?? "-"}",
-                            subtitle1: "${outlet.codeOutlet ?? "-"}",
-                            subtitle2: "${outlet.address ?? "-"}",
-                            imageUrl: "${outlet.codeOutlet ?? "-"}",
-                            detail: true,
-                            onTap: () {
-                               Navigator.pushNamed(context, detailOutletRoute, arguments: outlet);
-                            },
+                          Stack(
+                            children: [
+                              CustomListItem(
+                                labelTitle: "Toko",
+                                labelSubtitle1: "Kode",
+                                labelSubtitle2: "Alamat",
+                                title: ": ${outlet.name ?? "-"}",
+                                subtitle1: ": ${outlet.codeOutlet ?? "-"}",
+                                subtitle2: ": ${outlet.address ?? "-"}",
+                                imageUrl: "${outlet.codeOutlet ?? "-"}",
+                                detail: true,
+                                onTap: () {
+                                   Navigator.pushNamed(context, detailOutletRoute, arguments: outlet);
+                                },
+                              ),
+                              if(outlet.promoAvailable == 1)
+                              Positioned(
+                                left: 0,
+                                top: 0,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: Color(coralFlameColor),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  padding: EdgeInsets.all(2),
+                                  child: Image.asset(icPromo, height: 14, width: 14, fit: BoxFit.cover, color: Color(pureWhiteColor),)),
+                              ),
+                            ],
                           ),
                         ],
                       );

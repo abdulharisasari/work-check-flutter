@@ -268,12 +268,8 @@ class _DisplayPictureScreenState extends State<DisplayPictureScreen> {
       final response = await attandanceProv.createAttandance(context, attendanceModel);
       if (response != null) {
         if (response.code == 200) {
-         Navigator.pushReplacementNamed(
-            context,
-            attendanceRoute,
-            arguments: attendanceModel,
-          );
-
+          showSnackBar(context, response.message, backgroundColor: Color(mintGreenColor));
+          Navigator.pushReplacementNamed(context, attendanceRoute, arguments: attendanceModel);
         }
         if (response.code == 403) {
           showSnackBar(context, "Sesi habis silahkan login ulang");

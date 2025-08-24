@@ -3,7 +3,7 @@ import 'package:workcheckapp/services/assets.dart';
 import 'package:workcheckapp/services/themes.dart';
 
 class CustomListItem extends StatelessWidget {
-  final String title;
+  final String? title;
   final String? subtitle1, labelSubtitle1, labelTitle;
   final String? subtitle2, labelSubtitle2;
   final String imageUrl;
@@ -13,10 +13,11 @@ class CustomListItem extends StatelessWidget {
   final VoidCallback? onTap;
   final ValueChanged<bool?>? onSelectedChanged;
   final bool? detail;
+  final double? labelWidth;
 
   const CustomListItem({
     Key? key,
-    required this.title,
+    this.title,
     this.labelTitle,
     this.subtitle1 = "",
     this.labelSubtitle1,
@@ -28,7 +29,8 @@ class CustomListItem extends StatelessWidget {
     this.isSelected = false,
     this.onTap,
     this.onSelectedChanged,
-    this.detail
+    this.detail,
+    this.labelWidth = 50,
   }) : super(key: key);
 
   List<bool> _encodeBarcode(String code) {
@@ -117,7 +119,7 @@ class CustomListItem extends StatelessWidget {
                       Row(
                         children: [
                           Container(
-                            width: 50,
+                            width: labelWidth,
                             child: Text(
                               labelTitle??'',
                               style: TextStyle(
@@ -129,7 +131,7 @@ class CustomListItem extends StatelessWidget {
                           ),
                           Expanded(
                             child: Text(
-                              ": $title",
+                              title??"",
                               style: TextStyle(
                                 fontSize: 12,
                                 color: Color(darkGreyColor),
@@ -151,7 +153,6 @@ class CustomListItem extends StatelessWidget {
                                     labelSubtitle1??'',
                                     style: TextStyle(fontSize: 11, color: Color(darkGreyColor)),
                                   ),
-                                
                               ],
                             ),
                           ),
@@ -163,10 +164,9 @@ class CustomListItem extends StatelessWidget {
                               children: [
                                 if (subtitle1!.isNotEmpty)
                                   Text(
-                                    ": $subtitle1",
+                                    "$subtitle1",
                                     style: TextStyle(fontSize: 11, color: Color(darkGreyColor)),
                                   ),
-                                
                               ],
                             ),
                           ),
@@ -192,10 +192,9 @@ class CustomListItem extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               mainAxisAlignment: MainAxisAlignment.start,
                               children: [
-                                
                                 if (subtitle2!.isNotEmpty)
                                   Text(
-                                    ": $subtitle2",
+                                    "$subtitle2",
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(fontSize: 11, color: Color(darkGreyColor)),
                                   ),

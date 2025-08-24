@@ -40,12 +40,11 @@ class ProductProvider extends ChangeNotifier {
 
 
   Future<Res.Response?> createProductSelect(BuildContext context, List<ProductModel> listProduct, id) async {
+    print("id outlet in prov : $id");
     try {
       final body = {
-        "products": listProduct.map((p) => {
-          "id": p.id,
-          "available": p.availableStock, 
-        }).toList(),
+        'products': listProduct.map((product) => product.toJson()).toList(),
+        
       };
 
       final jsonString = jsonEncode(body);

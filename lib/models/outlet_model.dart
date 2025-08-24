@@ -11,7 +11,7 @@ class OutletModel {
       codeOutlet : json['kode_toko'],
       address : json['alamat'],
       imgUrl : json['image'],
-      promoAvailable: json['promo_available']??0
+      promoAvailable: json['promo_available']
     );
   }
 
