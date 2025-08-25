@@ -13,7 +13,6 @@ import 'package:workcheckapp/providers/promo_provider.dart';
 import 'package:workcheckapp/services/db_local.dart';
 import 'package:workcheckapp/services/snack_bar.dart';
 import 'package:workcheckapp/services/themes.dart';
-import 'package:http/http.dart' as http;
 
 class ProductPage extends StatefulWidget {
   final OutletModel outletModel;
