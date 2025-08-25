@@ -114,6 +114,7 @@ Tools • Dart 3.2.3
 
 ## 10. Struktur Project
 
+```bash
 lib/
 ├── commons/
 │   ├── base/                 # Komponen dasar untuk aplikasi
@@ -159,10 +160,11 @@ lib/
     ├── snack_bar.dart        # Service untuk snack bar/alert
     ├── themes.dart           # Service untuk tema aplikasi
     └── utils.dart            # Utility/helper function
+```
 
+---
 
 ## Link Dokumentasi
 
-```bash
-https://drive.google.com/drive/folders/15wPq5wwnCb3wsH9fOuWef0u3El3gf1aT?usp=sharing
-```
+[Google Drive Documentation](https://drive.google.com/drive/folders/15wPq5wwnCb3wsH9fOuWef0u3El3gf1aT?usp=sharing)
+
