@@ -112,3 +112,57 @@ Tools • Dart 3.2.3
 * Gunakan **device fisik** atau emulator yang terhubung ke jaringan yang sama dengan PC untuk testing.
 * Semua data offline akan disimpan di Hive dan otomatis tersinkron saat koneksi tersedia.
 
+## 10. Struktur Project
+
+lib/
+├── commons/
+│   ├── base/                 # Komponen dasar untuk aplikasi
+│   │   ├── base_model.dart   # Model dasar semua model
+│   │   ├── base_service.dart # Service dasar/API helper
+│   │   └── base_widget.dart  # Widget dasar/reusable
+│   ├── widgets/              # Komponen UI reusable (custom_banner, custom_button, dll)
+│   └── constants.dart        # Variabel dan konstanta global
+├── configs/
+│   ├── env.dart              # Konfigurasi environment default
+│   ├── env.dev.dart          # Konfigurasi environment development
+│   └── env.prod.dart         # Konfigurasi environment production
+├── modals/
+│   ├── maps/                 # File terkait map/geolocation (access_location, access_permission)
+│   └── gateway_connection.dart # Konfigurasi koneksi gateway/API
+├── models/
+│   ├── attendance_model.dart # Model data kehadiran/absensi
+│   ├── auth_model.dart       # Model data autentikasi
+│   ├── login_model.dart      # Model data login
+│   ├── outlet_model.dart     # Model data outlet
+│   ├── product_model.dart    # Model data produk
+│   ├── promo_model.dart      # Model data promo
+│   ├── response_model.dart   # Model untuk response API
+│   └── user_model.dart       # Model data pengguna
+├── pages/
+│   ├── attendance/           # Halaman absensi (index, camera, face detector)
+│   ├── auth/                 # Halaman autentikasi/login
+│   ├── outlet/               # Halaman outlet dan detail outlet
+│   ├── product/              # Halaman produk
+│   ├── promo/                # Halaman promo
+│   └── root/                 # Halaman root aplikasi
+├── providers/                # State management/provider logic (app, attendance, auth, outlet, product, promo, user)
+├── routers/
+│   ├── arguments.dart        # Model/struktur argument routing
+│   ├── constant_routers.dart # Konstanta routing
+│   └── routers.dart          # Definisi dan pengaturan routing aplikasi
+└── services/
+    ├── api.dart              # Service API utama
+    ├── assets.dart           # Service untuk manajemen asset
+    ├── db_local.dart         # Service untuk database lokal
+    ├── enums.dart            # Enum global aplikasi
+    ├── modals.dart           # Service terkait modal/dialog
+    ├── snack_bar.dart        # Service untuk snack bar/alert
+    ├── themes.dart           # Service untuk tema aplikasi
+    └── utils.dart            # Utility/helper function
+
+
+## Link Dokumentasi
+
+```bash
+https://drive.google.com/drive/folders/15wPq5wwnCb3wsH9fOuWef0u3El3gf1aT?usp=sharing
+```
