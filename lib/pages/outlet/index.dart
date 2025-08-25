@@ -35,9 +35,7 @@ class _OutletPageState extends State<OutletPage> {
 
 Future<void> _getHeaderOutlet() async {
     setState(() => _isLoading = true);
-
     listOutletModel.clear();
-
     final outletProv = Provider.of<OutletProvider>(context, listen: false);
     final localDb = LocalOfflineDatabase<OutletModel>(
       boxName: 'outlet_offline',

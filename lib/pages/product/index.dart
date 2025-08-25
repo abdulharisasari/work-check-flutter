@@ -50,22 +50,34 @@ class _ProductPageState extends State<ProductPage> {
   }
 
 
+  
   Future<void> _syncPendingPromos() async {
     final promoProvider = Provider.of<PromoProvider>(context, listen: false);
     final pending = await promoDb.getPendingItems();
 
+    if (pending.isEmpty) return;
+    bool allSuccess = true;
     for (var promo in pending) {
       try {
-        final success = await promoProvider.createProductPromo(context, promo, widget.outletModel.id!).timeout(const Duration(seconds: 2));
+        final response = await promoProvider.createProductPromo(context, promo, widget.outletModel.id!).timeout(const Duration(seconds: 2));
 
-        if (success?.code == 200) {
+        if (response?.code == 200) {
           await promoDb.removeItem(promo.hashCode);
+        } else {
+          allSuccess = false;
         }
       } catch (e) {
+        allSuccess = false;
         debugPrint("Gagal sinkronisasi promo: $e");
       }
     }
+    if (allSuccess) {
+      await promoDb.clearAll();
+      debugPrint("Semua promo berhasil terkirim, data offline dihapus.");
+    }
   }
+
+  
   void _init() async {
     _searchTC.clear();
     await _getHeaderProduct();
@@ -147,9 +159,9 @@ class _ProductPageState extends State<ProductPage> {
                 return CustomListItem(
                   labelWidth: 140,
                   labelTitle: "${product.name ?? "-"}",
-                  labelSubtitle1: "${product.volume}",
+                  labelSubtitle1: "${product.volume??''}",
                   imageUrl: "${product.imgUrl ?? "-"}",
-                  barcode: "${product.codeBarcode}",
+                  barcode: "${product.codeBarcode??""}",
                   selectable: true,
                   isSelected: isSelected,
                   onSelectedChanged: (selected) {

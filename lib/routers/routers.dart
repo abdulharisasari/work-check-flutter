@@ -3,7 +3,7 @@ import 'package:workcheckapp/models/attendance_model.dart';
 import 'package:workcheckapp/models/outlet_model.dart';
 import 'package:workcheckapp/pages/attendance/camera/index.dart';
 import 'package:workcheckapp/pages/attendance/index.dart';
-import 'package:workcheckapp/pages/login/index.dart';
+import 'package:workcheckapp/pages/auth/login/index.dart';
 import 'package:workcheckapp/pages/outlet/detail-outlet/index.dart';
 import 'package:workcheckapp/pages/outlet/index.dart';
 import 'package:workcheckapp/pages/root/index.dart';

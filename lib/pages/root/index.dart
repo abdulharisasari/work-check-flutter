@@ -55,8 +55,7 @@ class _SplashScreenState extends State<SplashScreen> {
     } catch (e) {
       if (user == null) {
         Navigator.of(context).pushNamedAndRemoveUntil(loginRoute, (route) => false);
-        final message = e is Exception ? e.toString() : "Terjadi kesalahan, silakan login ulang.";
-        showSnackBar(context, message);
+        showSnackBar(context, "Koneksi Gagal. Silahkan login ulang");
       } else {
         debugPrint("Error mengambil data server, tetap pakai local: $e");
       }

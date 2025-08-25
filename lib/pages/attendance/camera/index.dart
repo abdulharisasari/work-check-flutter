@@ -71,23 +71,24 @@ class _FaceDetectorPageState extends State<FaceDetectorPage> {
             onPressed: () => Navigator.pop(context),
           ),
         ),
-        // if (!_facesDetected)
-        //   Positioned(
-        //     top: 180,
-        //     left: 0,
-        //     right: 0,
-        //     child: Center(
-        //       child: Container(
-        //         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        //         color: Colors.black54,
-        //         child: const Text(
-        //           'Wajah tidak terdeteksi',
-        //           style: TextStyle(color: Colors.white, fontSize: 18),
-        //         ),
-        //       ),
-        //     ),
-        //   ),
         if (!_facesDetected)
+          Positioned(
+            top: 180,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                color: Colors.black54,
+                child: const Text(
+                  'Wajah tidak terdeteksi',
+                  style: TextStyle(color: Colors.white, fontSize: 18),
+                ),
+              ),
+            ),
+          ),
+        if (_facesDetected)
+          // if (!_facesDetected)
           Positioned(
             top: 180,
             left: 20,
@@ -99,9 +100,9 @@ class _FaceDetectorPageState extends State<FaceDetectorPage> {
               ),
             ),
           ),
-        if (!_facesDetected)
+        // if (!_facesDetected)
 
-        // if (_faceInsideGuide && !_pictureTaken)
+        if (_faceInsideGuide && !_pictureTaken)
           Positioned(
             bottom: 50,
             left: 0,

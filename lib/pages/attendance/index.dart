@@ -225,7 +225,7 @@ class _AttendancePageState extends State<AttendancePage> {
           int status;
           if (now.hour >= 8 && now.hour < 12) {
             status = 1;
-          } else if (now.hour >= 15) {
+          } else if (now.hour >= 12) {
             status = 2;
           } else {
             showSnackBar(context, "Belum waktu absen");
