@@ -107,7 +107,7 @@ class CustomListItem extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                   child: Builder(
                     builder: (context) {
-                      if (imageUrl == null || imageUrl!.isEmpty) {
+                      if (imageUrl.isEmpty) {
                         // Tidak ada URL → fallback asset
                         return Image.asset(
                           illustrationOutlet,
@@ -135,7 +135,7 @@ class CustomListItem extends StatelessWidget {
                       } else {
                         // Tampilkan gambar dari network
                         return Image.network(
-                          imageUrl!,
+                          imageUrl,
                           width: 50,
                           height: 50,
                           fit: BoxFit.cover,
