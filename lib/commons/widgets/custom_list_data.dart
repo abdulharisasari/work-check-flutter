@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:workcheckapp/services/assets.dart';
 import 'package:workcheckapp/services/themes.dart';
@@ -103,12 +105,49 @@ class CustomListItem extends StatelessWidget {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    imageUrl,
-                    width: 50,
-                    height: 50,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Image.asset(illustrationOutlet,height: 50,),
+                  child: Builder(
+                    builder: (context) {
+                      if (imageUrl == null || imageUrl!.isEmpty) {
+                        // Tidak ada URL → fallback asset
+                        return Image.asset(
+                          illustrationOutlet,
+                          height: 50,
+                          width: 50,
+                          fit: BoxFit.cover,
+                        );
+                      }
+
+                      final file = File(imageUrl);
+                      if (file.existsSync()) {
+                        // Tampilkan gambar dari file lokal
+                        return Image.file(
+                          file,
+                          width: 50,
+                          height: 50,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Image.asset(
+                            illustrationOutlet,
+                            height: 50,
+                            width: 50,
+                            fit: BoxFit.cover,
+                          ),
+                        );
+                      } else {
+                        // Tampilkan gambar dari network
+                        return Image.network(
+                          imageUrl!,
+                          width: 50,
+                          height: 50,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Image.asset(
+                            illustrationOutlet,
+                            height: 50,
+                            width: 50,
+                            fit: BoxFit.cover,
+                          ),
+                        );
+                      }
+                    },
                   ),
                 ),
                 const SizedBox(width: 12),

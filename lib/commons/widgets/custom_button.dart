@@ -25,7 +25,7 @@ class CustomButton extends StatelessWidget {
     this.isOutline = false,
     this.borderColor,
     this.sizeText = 18,
-    this.isEnabled = true, // ✅ default aktif
+    this.isEnabled = true, 
   }) : super(key: key);
 
   @override
@@ -49,7 +49,7 @@ class CustomButton extends StatelessWidget {
           ),
           shadowColor: Colors.grey.withOpacity(0.5),
         ),
-        onPressed: isEnabled ? onPressed : null, // ✅ disable klik
+        onPressed: isEnabled ? onPressed : null, 
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,

@@ -8,6 +8,7 @@ import 'package:workcheckapp/models/outlet_model.dart';
 import 'package:workcheckapp/providers/outlet_provider.dart';
 import 'package:workcheckapp/routers/constant_routers.dart';
 import 'package:workcheckapp/services/assets.dart';
+import 'package:workcheckapp/services/db_local.dart';
 import 'package:workcheckapp/services/themes.dart';
 
 class OutletPage extends StatefulWidget {
@@ -29,27 +30,46 @@ class _OutletPageState extends State<OutletPage> {
   }
 
   void _init() async {
-    await _getHeaderAttandance();
+    await _getHeaderOutlet();
   }
 
-  Future<void> _getHeaderAttandance() async {
-    setState(() {
-      _isLoading = true;
-    });
+Future<void> _getHeaderOutlet() async {
+    setState(() => _isLoading = true);
+
     listOutletModel.clear();
-    final outletProv = await Provider.of<OutletProvider>(context, listen: false);
+
+    final outletProv = Provider.of<OutletProvider>(context, listen: false);
+    final localDb = LocalOfflineDatabase<OutletModel>(
+      boxName: 'outlet_offline',
+      fromJson: (json) => OutletModel.fromJson(json),
+      toJson: (outlet) => outlet.toJson(),
+    );
+
+    List<OutletModel> list = [];
+
     try {
-      final _outletState = await outletProv.getOutlet(context, search: _searchTC.text);
-      if (_outletState != null) {
-        setState(() {
-          listOutletModel = _outletState;
-        });
+      final offlineList = await localDb.getPendingItems();
+      if (offlineList.isNotEmpty) {
+        setState(() => list = offlineList);
+      }
+
+      final serverData = await outletProv.getOutlet(context, search: _searchTC.text).timeout(const Duration(seconds: 2));
+
+      if (serverData != null && serverData.isNotEmpty) {
+        await localDb.clearAll();
+        for (var outlet in serverData) {
+          await localDb.addItem(outlet);
+        }
+
+        list = serverData;
+        debugPrint("Data outlet berhasil diambil dari server");
       }
     } catch (e) {
-      debugPrint('Error in getHeaderAttandance: $e');
+      debugPrint("Fallback pakai data lokal karena server tidak merespon: $e");
     } finally {
       setState(() {
         _isLoading = false;
+        listOutletModel = list;
       });
     }
   }
@@ -124,7 +144,7 @@ class _OutletPageState extends State<OutletPage> {
             padding: EdgeInsets.symmetric(horizontal: 20),
             child: CustomButton(
               text: "SELENGKAPNYA",
-              onPressed: () async{ _getHeaderAttandance(); },
+              onPressed: () async{ _getHeaderOutlet(); },
             ),
           ),
           const SizedBox(height: 20),
@@ -137,7 +157,7 @@ class _OutletPageState extends State<OutletPage> {
   Widget _buildSearch(){
     return CustomTextField(
       controller: _searchTC,
-      onChanged: (p0) => _getHeaderAttandance(),
+      onChanged: (p0) => _getHeaderOutlet(),
       hintext: 'Search',
       label: "",
       hintextColor: softGreyColor,

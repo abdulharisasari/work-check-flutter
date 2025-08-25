@@ -1,4 +1,4 @@
-const BASE_URL = 'http://10.27.197.59:8000';
+const BASE_URL = 'http://10.219.221.59:8000';
 
 const API_ENDPOINT = '$BASE_URL/v1';
 const GOOGLE_MAPS_API_KEY = '';

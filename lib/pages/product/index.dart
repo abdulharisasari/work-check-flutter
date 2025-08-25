@@ -7,10 +7,13 @@ import 'package:workcheckapp/commons/widgets/custom_list_data.dart';
 import 'package:workcheckapp/commons/widgets/custom_textfield.dart';
 import 'package:workcheckapp/models/outlet_model.dart';
 import 'package:workcheckapp/models/product_model.dart';
+import 'package:workcheckapp/models/promo_model.dart';
 import 'package:workcheckapp/providers/product_provider.dart';
+import 'package:workcheckapp/providers/promo_provider.dart';
 import 'package:workcheckapp/services/db_local.dart';
 import 'package:workcheckapp/services/snack_bar.dart';
 import 'package:workcheckapp/services/themes.dart';
+import 'package:http/http.dart' as http;
 
 class ProductPage extends StatefulWidget {
   final OutletModel outletModel;
@@ -26,22 +29,44 @@ class _ProductPageState extends State<ProductPage> {
   List<ProductModel> listProduct = [];
   late final LocalOfflineDatabase<ProductModel> productDb;
   bool _isLoading = false;
+  late final LocalOfflineDatabase<PromoModel> promoDb;
+
 
   @override
   void initState() {
-    productDb = LocalOfflineDatabase<ProductModel>(
-      boxName: 'product_offline',
-      fromJson: (json) => ProductModel.fromJson(json),
-      toJson: (product) => product.toJson(),
+    promoDb = LocalOfflineDatabase<PromoModel>(
+      boxName: 'promo_offline',
+      fromJson: (json) => PromoModel.fromJson(json),
+      toJson: (promo) => promo.toJson(),
     );
+
 
     _init();
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _syncPendingSelectedProducts();
+      _syncPendingPromos();
+
     });
+    
   }
 
+
+  Future<void> _syncPendingPromos() async {
+    final promoProvider = Provider.of<PromoProvider>(context, listen: false);
+    final pending = await promoDb.getPendingItems();
+
+    for (var promo in pending) {
+      try {
+        final success = await promoProvider.createProductPromo(context, promo, widget.outletModel.id!).timeout(const Duration(seconds: 2));
+
+        if (success?.code == 200) {
+          await promoDb.removeItem(promo.hashCode);
+        }
+      } catch (e) {
+        debugPrint("Gagal sinkronisasi promo: $e");
+      }
+    }
+  }
   void _init() async {
     _searchTC.clear();
     await _getHeaderProduct();
@@ -55,124 +80,45 @@ class _ProductPageState extends State<ProductPage> {
   }
 
   Future<void> _getHeaderProduct() async {
-    setState(() {
-      _isLoading = true;
-    });
+    listProduct.clear();
     final productProv = Provider.of<ProductProvider>(context, listen: false);
-
+    print("select OutletId : ${widget.outletModel.id}");
     try {
-      final remoteProducts = await productProv.getProduct(context, "${widget.outletModel.id}", search: _searchTC.text).timeout(const Duration(seconds: 2));
+      final _productState = await productProv.getProduct(context, "${widget.outletModel.id}", search: _searchTC.text).timeout(const Duration(seconds: 2));
 
-      if (remoteProducts != null && remoteProducts.isNotEmpty) {
-        await productDb.clearAll();
-        for (var p in remoteProducts) {
-          await productDb.addItem(p);
-        }
-
+      if (_productState != null) {
         setState(() {
-          listProduct = remoteProducts;
-          _isLoading = false;
+          listProduct = _productState;
         });
-        
-        return;
       }
-    } on TimeoutException {
-      debugPrint("⏱ Timeout ambil produk, pakai offline");
-      setState(() {
-        _isLoading = false;
-      });
-    } catch (e) {
-      debugPrint("⚠️ Gagal ambil produk dari server: $e");
-      setState(() {
-        _isLoading = false;
-      });
-    }
+    } on TimeoutException catch (_) {
+      debugPrint('Request timeout setelah 2 detik');
+      showSnackBar(context, "Jaringan offline. Silakan nyalakan koneksi internet.");
 
-    final localProducts = await productDb.getPendingItems();
-    setState(() {
-      listProduct = localProducts;
-      _isLoading = false;
-    });
+      
+    } catch (e) {
+      debugPrint('Error in getHeaderProduct: $e');
+    }
   }
 
-  // Future<void> _selectedProduct(List<ProductModel> listProduct) async {
-  //   setState(() {});
-  //   final productProv = await Provider.of<ProductProvider>(context, listen: false);
-  //   try {
-  //     final response = await productProv.createProductSelect(context, listProduct, widget.outletModel.id);
-  //     if (response != null && response.code == 200) {
-  //       showSnackBar(context, response.message, backgroundColor: Color(mintGreenColor));
-  //     } else {
-  //       showSnackBar(context, "${response?.message}");
-  //     }
-  //   } catch (e) {
-  //     debugPrint('Error in _selectedProduct: $e');
-  //   }
-  //   return null;
-  // }
+
 
   Future<void> _selectedProduct(List<ProductModel> listProduct) async {
-  final productProv = Provider.of<ProductProvider>(context, listen: false);
-
-  try {
-    final response = await productProv
-        .createProductSelect(context, listProduct, widget.outletModel.id)
-        .timeout(const Duration(seconds: 2));
-
-    if (response != null && response.code == 200) {
-      showSnackBar(context, response.message, backgroundColor: Color(mintGreenColor));
-      // ✅ Hapus data pending di local (kalau ada)
-      await productDb.clearAll();
-    } else {
-      // ⬇️ Simpan ke local biar nanti sync
-      for (var product in listProduct) {
-        await _saveOfflineIfNotExists(product);
-      }
-      showSnackBar(context, response?.message ?? "Produk disimpan offline");
-    }
-  } on TimeoutException {
-    // ⏱ Timeout → simpan ke offline
-    for (var product in listProduct) {
-      await _saveOfflineIfNotExists(product);
-    }
-    showSnackBar(context, "Timeout. Produk disimpan offline.");
-  } catch (e) {
-    debugPrint("Error in _selectedProduct: $e");
-    for (var product in listProduct) {
-      await _saveOfflineIfNotExists(product);
-    }
-    showSnackBar(context, "Gagal mengirim produk. Disimpan offline.");
-  }
-}
-
-/// 🔄 Sync otomatis produk yang belum terkirim
-Future<void> _syncPendingSelectedProducts() async {
-  final productProv = Provider.of<ProductProvider>(context, listen: false);
-  final pendingProducts = await productDb.getPendingItems();
-
-  for (var product in pendingProducts) {
+    setState(() {});
+    final productProv = await Provider.of<ProductProvider>(context, listen: false);
     try {
-      final response = await productProv
-          .createProductSelect(context, [product], widget.outletModel.id)
-          .timeout(const Duration(seconds: 2));
-
+      final response = await productProv.createProductSelect(context, listProduct, widget.outletModel.id);
       if (response != null && response.code == 200) {
-        await productDb.removeItem(product.hashCode);
+        showSnackBar(context, response.message, backgroundColor: Color(mintGreenColor));
+      } else {
+        showSnackBar(context, "${response?.message}");
       }
     } catch (e) {
-      debugPrint("Gagal sync produk: $e");
+      debugPrint('Error in _selectedProduct: $e');
     }
+    return null;
   }
-}
 
-/// 🔒 Helper: biar ga nyimpen item duplikat
-Future<void> _saveOfflineIfNotExists(ProductModel product) async {
-  final pending = await productDb.getPendingItems();
-  final exists = pending.any((p) => p.id == product.id);
-  if (!exists) {
-    await productDb.addItem(product);
-  }
-}
 
 
   @override

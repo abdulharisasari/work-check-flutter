@@ -275,7 +275,7 @@ class _DisplayPictureScreenState extends State<DisplayPictureScreen> {
           showSnackBar(context, "Sesi habis silahkan login ulang");
           Navigator.pushReplacementNamed(context, loginRoute);
         } else {
-          showSnackBar(context, response.message);
+          showSnackBar(context, response.message,  backgroundColor: Color(mintGreenColor));
         }
       }
     } catch (e) {

@@ -1,24 +1,4 @@
-// import 'package:hive/hive.dart';
-// import '../models/promo_model.dart';
 
-// class LocalPromoDatabase {
-//   static const String boxName = 'promo_offline';
-  
-//   Future<void> addPromoOffline(PromoModel promo) async {
-//     final box = await Hive.openBox(boxName);
-//     await box.add(promo.toJson());
-//   }
-
-//   Future<List<Map<String, dynamic>>> getPendingPromos() async {
-//     final box = await Hive.openBox(boxName);
-//     return box.values.map((e) => Map<String, dynamic>.from(e)).toList();
-//   }
-
-//   Future<void> removePromo(int key) async {
-//     final box = await Hive.openBox(boxName);
-//     await box.delete(key);
-//   }
-// }
 
 
 import 'package:hive_flutter/hive_flutter.dart';
@@ -48,6 +28,14 @@ class LocalOfflineDatabase<T> {
     final box = await Hive.openBox(boxName);
     await box.delete(key);
   }
+
+  Future<T?> getLatestItem() async {
+    final items = await getPendingItems();
+    if (items.isEmpty) return null;
+    return items.last;
+  }
+
+
 
   Future<void> clearAll() async {
     final box = await Hive.openBox(boxName);

@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:workcheckapp/commons/widgets/custom_button.dart';
 import 'package:workcheckapp/commons/widgets/custom_dialog.dart';
@@ -18,6 +20,7 @@ import 'package:workcheckapp/services/db_local.dart';
 import 'package:workcheckapp/services/snack_bar.dart';
 import 'package:workcheckapp/services/themes.dart';
 import 'package:workcheckapp/services/utils.dart';
+import 'package:http/http.dart' as http;
 
 class AttendancePage extends StatefulWidget {
   final AttendanceModel? attendanceModel;
@@ -44,15 +47,16 @@ class _AttendancePageState extends State<AttendancePage> {
   void initState() {
     super.initState();
     _init();
+    
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _syncPendingAttendance();
+      _getHeaderAttendance();
     });
   }
 
   void _init() async {
     await _getMe();
     await _checkLocationPermission();
-    await _getHeaderAttandance();
+    await _getHeaderAttendance();
     await _getLocationAndTime();
   }
   
@@ -70,115 +74,69 @@ class _AttendancePageState extends State<AttendancePage> {
     }
   }
 
-  Future<void> _getHeaderAttandance() async {
-    setState(() {
-      _isLoading = true;
-    });
+  Future<void> _getHeaderAttendance() async {
+    setState(() => _isLoading = true);
     listAttendance.clear();
-    final attandanceProv = await Provider.of<AttandanceProvider>(context, listen: false);
+    final attandanceProv = Provider.of<AttandanceProvider>(context, listen: false);
+    final localDb = LocalOfflineDatabase<AttendanceModel>(boxName: 'attendance_offline', fromJson: (json) => AttendanceModel.fromJson(json), toJson: (att) => att.toJson());
     try {
-      final _attandanceState = await attandanceProv.getHeaderAttendance(context);
-      final _attandanceToday = await attandanceProv.getTodayAttendance(context);
+      final offlineList = await localDb.getPendingItems();
+      if (offlineList.isNotEmpty) {
+        setState(() => listAttendance = offlineList);
+      }
+
+      final _attandanceState = await attandanceProv.getHeaderAttendance(context).timeout(const Duration(seconds: 2));
+      final _attandanceToday = await attandanceProv.getTodayAttendance(context).timeout(const Duration(seconds: 2));
+
       if (_attandanceState != null && _attandanceToday != null) {
+        await localDb.clearAll();
+        final existingItems = <int>{};
+        for (var att in _attandanceState) {
+          if (existingItems.contains(att.hashCode)) continue;
+          existingItems.add(att.hashCode);
+
+          if (att.imgUrl != null && att.imgUrl!.startsWith('http')) {
+            final file = await _downloadAndSaveImage(att.imgUrl!);
+            att.imgUrl = file.path;
+          }
+          await localDb.addItem(att);
+        }
         setState(() {
           listAttendance = _attandanceState;
           attendanceModel = _attandanceToday;
         });
       }
     } catch (e) {
-      debugPrint('Error in getHeaderAttandance: $e');
+      debugPrint('Error in getHeaderAttendance: $e');
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
     }
   }
 
-  // Future<void> createAttandance() async {
-  //   if (_isLoading) return;
-  //   setState(() => _isLoading = true);
-  //   final attendanceDb = LocalOfflineDatabase<AttendanceModel>(boxName: 'attendance_offline', fromJson: (json) => AttendanceModel.fromJson(json), toJson: (attendance) => attendance.toJson());
-  //   final attandanceProv = Provider.of<AttandanceProvider>(context, listen: false);
-  //   final now = DateTime.now();
-  //   if (_dateTC.text.isEmpty || _notesTC.text.isEmpty) {
-  //     showSnackBar(context,"Mohon isi ${_dateTC.text.isEmpty ? "Tanggal Izin" : _notesTC.text.isEmpty ? "Notes" : selectedHari == null ? "Waktu izin" : selectedLeave == null ? "Jenis Izin" : selectedHari == null ? "Waktu Izin" : "Semua"}");
-  //     setState(() => _isLoading = false);
-  //     return;
-  //   }
-  //   final attendanceModel = AttendanceModel(
-  //     leaveType: selectedLeave,
-  //     time: now.toString().split(' ')[1].split('.')[0],
-  //     date: _dateTC.text,
-  //     address: locationText,
-  //     notes: _notesTC.text,
-  //     status: 0,
-  //   );
 
-  //   try {
-  //     final response = await attandanceProv.createAttandance(context, attendanceModel).timeout(const Duration(seconds: 2));;
-  //     if (response != null) {
-  //       if (response.code == 200) {
-  //         showSnackBar(context, response.message, backgroundColor: Color(mintGreenColor));
-  //         await attendanceDb.clearAll();
-  //         Navigator.pushReplacementNamed(context, attendanceRoute);
-  //       }else if (response.code == 403) {
-  //         await attendanceDb.addItem(attendanceModel);
-  //         showSnackBar(context, response.message ?? "Absen disimpan offline");
-  //       } else {
-  //         showSnackBar(context, response.message);
-  //       }
-  //     }
-  //   } catch (e) {
-  //     debugPrint('Error in createAttandance: $e');
-  //     showSnackBar(context, 'Gagal mengirim absen. Silakan coba lagi.');
-  //   }
-  // }
   
-  Future<void> _syncPendingAttendance() async {
-    final attendanceDb = LocalOfflineDatabase<AttendanceModel>(
-      boxName: 'attendance_offline',
-      fromJson: (json) => AttendanceModel.fromJson(json),
-      toJson: (attendance) => attendance.toJson(),
-    );
-
-    final provider = Provider.of<AttandanceProvider>(context, listen: false);
-    final pending = await attendanceDb.getPendingItems();
-
-    for (var item in pending) {
-      try {
-        final response = await provider.createAttandance(context, item);
-        if (response != null && response.code == 200) {
-          await attendanceDb.removeItem(item.hashCode);
-          debugPrint("Berhasil sync attendance offline");
-        }
-      } catch (e) {
-        debugPrint("Gagal sync attendance: $e");
-      }
-    }
+  Future<File> _downloadAndSaveImage(String url) async {
+    final response = await http.get(Uri.parse(url));
+    final bytes = response.bodyBytes;
+    final dir = await getApplicationDocumentsDirectory();
+    final file = File('${dir.path}/${url.split('/').last}');
+    await file.writeAsBytes(bytes);
+    return file;
   }
+
+
 
   Future<void> createAttandance() async {
-    if (_isLoading) return; // cegah klik berulang
-
+    if (_isLoading) return;
     setState(() => _isLoading = true);
-
-    final attendanceDb = LocalOfflineDatabase<AttendanceModel>(
-      boxName: 'attendance_offline',
-      fromJson: (json) => AttendanceModel.fromJson(json),
-      toJson: (attendance) => attendance.toJson(),
-    );
-
+    final attendanceDb = LocalOfflineDatabase<AttendanceModel>(boxName: 'attendance_offline', fromJson: (json) => AttendanceModel.fromJson(json), toJson: (attendance) => attendance.toJson());
     final attandanceProv = Provider.of<AttandanceProvider>(context, listen: false);
     final now = DateTime.now();
-
     if (_dateTC.text.isEmpty || _notesTC.text.isEmpty) {
-      showSnackBar(
-          context,
-          "Mohon isi ${_dateTC.text.isEmpty ? "Tanggal Izin" : _notesTC.text.isEmpty ? "Notes" : selectedHari == null ? "Waktu izin" : selectedLeave == null ? "Jenis Izin" : "Semua"}");
+      showSnackBar(context,"Mohon isi ${_dateTC.text.isEmpty ? "Tanggal Izin" : _notesTC.text.isEmpty ? "Notes" : selectedHari == null ? "Waktu izin" : selectedLeave == null ? "Jenis Izin" : selectedHari == null ? "Waktu Izin" : "Semua"}");
       setState(() => _isLoading = false);
       return;
     }
-
     final attendanceModel = AttendanceModel(
       leaveType: selectedLeave,
       time: now.toString().split(' ')[1].split('.')[0],
@@ -189,29 +147,25 @@ class _AttendancePageState extends State<AttendancePage> {
     );
 
     try {
-      // kasih timeout 2 detik biar gak nunggu lama
-      final response = await attandanceProv.createAttandance(context, attendanceModel).timeout(const Duration(seconds: 2));
-
-      if (response != null && response.code == 200) {
-        showSnackBar(context, response.message, backgroundColor: Color(mintGreenColor));
-        await attendanceDb.clearAll(); // bersihkan offline kalau berhasil
-        Navigator.pushReplacementNamed(context, attendanceRoute);
-      } else {
-        await attendanceDb.addItem(attendanceModel);
-        showSnackBar(context, response?.message ?? "Absen disimpan offline");
+      final response = await attandanceProv.createAttandance(context, attendanceModel).timeout(const Duration(seconds: 2));;
+      if (response != null) {
+        if (response.code == 200) {
+          showSnackBar(context, response.message, backgroundColor: Color(mintGreenColor));
+          await attendanceDb.clearAll();
+          Navigator.pushReplacementNamed(context, attendanceRoute);
+        }else if (response.code == 403) {
+          await attendanceDb.addItem(attendanceModel);
+          showSnackBar(context, response.message);
+        } else {
+          showSnackBar(context, response.message);
+        }
       }
-    } on TimeoutException {
-      await attendanceDb.addItem(attendanceModel);
-      showSnackBar(context, "Timeout. Absen disimpan offline");
     } catch (e) {
-      debugPrint("Error in createAttandance: $e");
-      await attendanceDb.addItem(attendanceModel);
-      showSnackBar(context, "Gagal mengirim absen. Absen disimpan offline");
-    } finally {
-      setState(() => _isLoading = false);
+      debugPrint('Error in createAttandance: $e');
+      showSnackBar(context, 'Gagal mengirim absen. Silakan coba lagi.');
     }
   }
-
+  
 
   Future<void> _getLocationAndTime() async {
     setState(() {});
@@ -269,7 +223,7 @@ class _AttendancePageState extends State<AttendancePage> {
         onConfirm: () async {
           final now = DateTime.now();
           int status;
-          if (now.hour >= 8 && now.hour < 9) {
+          if (now.hour >= 8 && now.hour < 12) {
             status = 1;
           } else if (now.hour >= 15) {
             status = 2;
@@ -748,21 +702,51 @@ class _AttendancePageState extends State<AttendancePage> {
             Container(
                 child: attendance.status == 1 || attendance.status == 2
                     ? ClipRRect(
-                        borderRadius: BorderRadius.circular(8), 
-                        child: Image.network(
-                          attendance.imgUrl ?? '',
-                          width: 70,
-                          height: 70,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              width: 70,
-                              height: 70,
-                              child: Icon(Icons.image_not_supported, size: 40, color: Colors.grey),
-                            );
+                        borderRadius: BorderRadius.circular(8),
+                        child: Builder(
+                          builder: (context) {
+                            if (attendance.imgUrl == null || attendance.imgUrl!.isEmpty) {
+                              return Container(
+                                width: 70,
+                                height: 70,
+                                color: Colors.grey[200],
+                                child: Icon(Icons.image_not_supported, size: 40, color: Colors.grey),
+                              );
+                            }
+                            final isLocal = File(attendance.imgUrl!).existsSync();
+                            if (isLocal) {
+                              return Image.file(
+                                File(attendance.imgUrl!),
+                                width: 70,
+                                height: 70,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    width: 70,
+                                    height: 70,
+                                    child: Icon(Icons.image_not_supported, size: 40, color: Colors.grey),
+                                  );
+                                },
+                              );
+                            } else {
+                              return Image.network(
+                                attendance.imgUrl!,
+                                width: 70,
+                                height: 70,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    width: 70,
+                                    height: 70,
+                                    child: Icon(Icons.image_not_supported, size: 40, color: Colors.grey),
+                                  );
+                                },
+                              );
+                            }
                           },
                         ),
                       )
+
                     : Container(
                         height: 70,
                         width: 70,
