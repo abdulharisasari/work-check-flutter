@@ -108,7 +108,6 @@ class CustomListItem extends StatelessWidget {
                   child: Builder(
                     builder: (context) {
                       if (imageUrl.isEmpty) {
-                        // Tidak ada URL → fallback asset
                         return Image.asset(
                           illustrationOutlet,
                           height: 50,
@@ -119,7 +118,6 @@ class CustomListItem extends StatelessWidget {
 
                       final file = File(imageUrl);
                       if (file.existsSync()) {
-                        // Tampilkan gambar dari file lokal
                         return Image.file(
                           file,
                           width: 50,
@@ -133,7 +131,6 @@ class CustomListItem extends StatelessWidget {
                           ),
                         );
                       } else {
-                        // Tampilkan gambar dari network
                         return Image.network(
                           imageUrl,
                           width: 50,
