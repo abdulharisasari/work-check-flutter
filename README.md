@@ -60,7 +60,7 @@ lib/env/env.dev.dart
 Ubah endpoint API menjadi IP lokal Anda, contohnya:
 
 ```dart
-const String API_BASE_URL = 'http://192.168.1.10:3000';
+const String API_BASE_URL = 'http://10.219.221.59:3000';
 ```
 
 > Pastikan backend API berjalan di PC Anda dan dapat diakses dari device/emulator yang sama.
